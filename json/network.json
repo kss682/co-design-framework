@@ -1,0 +1,30 @@
+{
+    "nodes": [
+        {
+            "id": "1",
+            "type": "ES"
+        },
+        {
+            "id": "2",
+            "type": "NN"
+        }
+    ],
+
+    "links": [
+        {
+            "src": "1",
+            "dst": "2"
+        }
+    ],
+
+    "streams": [
+        {
+            "id": "1",
+            "src": "1",
+            "dst": "2",
+            "release_time": "0",
+            "period": "40",
+            "deadline": "40"
+        }
+    ]
+}
