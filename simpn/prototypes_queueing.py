@@ -290,7 +290,15 @@ class QueueingChoice(prototypes.Prototype):
             result = [None] * len(outgoing)
             result[chosen] = SimToken(c)
             return result
-        choice_event = model.add_event(incoming, outgoing, choose)
+        
+        def custom_choose(c):
+            result = [None]*len(outgoing)
+            if "be" in c[0]:
+                result[0] = SimToken(c)
+            else:
+                result[1] = SimToken(c)
+            return result
+        choice_event = model.add_event(incoming, outgoing, custom_choose)
         self.add_event(choice_event)
 
         model.add_prototype(self)

@@ -899,7 +899,7 @@ class SimProblem:
         """
         next_combinations = []
         seen = set()
-
+        print(combinations)
         for t in combinations:
             # if there is no guard, or the guard is satisfied
             # THEN we found a valid combination
@@ -997,8 +997,11 @@ class SimProblem:
             # remove tokens from incoming places
             place.remove_token(token)
             # assign values to the variables on the arcs
+            # variable_assignment.append(token)
             variable_assignment.append(token.value)
 
+        print(variable_assignment)
+        
         # calculate the result of the behavior of the event
         try:
             result = event.behavior(*variable_assignment)
@@ -1023,10 +1026,11 @@ class SimProblem:
                         if not (type(r.time) is int or type(r.time) is float):
                             raise TypeError("Event " + str(event) + ": does not generate a numeric value for the time of variable " + str(event.outgoing[i]) + " for values " + str(variable_assignment) + ".")
                 i += 1
-
+        print(result)
         for i in range(len(result)):
             if result[i] is not None:
                 if isinstance(event.outgoing[i], SimVarQueue):
+                    print("Queue")
                     event.outgoing[i].add_token(result[i])
                 else:
                     if result[i].time > 0 and result[i].delay == 0:
