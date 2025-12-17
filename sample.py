@@ -1,49 +1,71 @@
-from simpn.simulator import SimProblem
-from simpn.simulator import SimToken
-from simpn.visualisation import Visualisation
-from random import expovariate as exp
+from simpn.simulator import SimProblem, SimToken
 import simpn.prototypes as prototype
-from simpn.prototypes_queueing import QueueingGenerator, QueueingQueue, QueueingServer, QueueingSink, QueueingChoice
-
-# Instantiate a simulation problem.
+# from simpn.reporters import SimpleReporter
+from reporter.time_reporter import TimesReporter
+from models.token import SimVarMonitor
+from simpn.visualisation import Visualisation
 network = SimProblem()
 
-end_system1 = network.add_var("end_system1")
-network_node = network.add_var("network_node")
-end_system3 = network.add_var("end_system3")
+p_mode1 = network.add_var("mode1")
+p_timer1 = network.add_var("p_timer1")
+p_ES1 = network.add_var("p_ES1")
 
-prototype.BPMNStartEvent(network, [], [end_system1], "message", 10)
+p_mode2 = network.add_var("mode2")
+p_timer2 = network.add_var("p_timer2")
+p_ES2 = network.add_var("p_ES2")
+p_net_buff = network.add_var("p_network_buffer")
+p_ES3 = network.add_var("p_ES3")
+# p_ES3 = SimVarMonitor("p_ES3", release_time=0, network=network)
+p_done = network.add_var("p_done")
+# network.add_prototype_var(p_ES3)
+# p_mode = network.add_var("mode")
 
-# Model the storage elements.
-q1 = QueueingQueue(network, "q1")
-# q2 = QueueingQueue(network, "q2")
-# q3 = QueueingQueue(network, "q3")
+p_mode1.put(1)
+p_timer1.put("p1-0")
+p_timer2.put("p2-0")
+
+def timer(p, mode):
+    if mode == 1 or mode == 2:
+        return [SimToken(p[:-1]+str(int(p[len(p)-1]) + 1), delay=20), SimToken(mode), SimToken(p)]
+    return [SimToken(p), SimToken(mode), None]
 
 
-sink1 = QueueingSink(network, "sink1")
-# sink2 = QueueingSink(network, "sink2")
-# sink3 = QueueingSink(network, "sink3")
-def delay(token):
-    return [SimToken(token, delay=10)]
-network.add_event([end_system1], [network_node], delay)
+def timer2(p, mode):
+    # print("Mode::", mode)
+    if mode == 2:
+        return [SimToken(p[:-1]+str(int(p[len(p)-1]) + 1), delay=20), SimToken(mode), SimToken(p)]
+    return [SimToken(p), SimToken(mode), None]
 
-def q_delay(queue):
-    if len(queue) > 1:
-        return [queue[0], queue[1:]]
-    return [None, queue]
+def delay(p):
+    return [SimToken(p, delay=10)]
 
 
-# Model the flow elements.
-# g1 = QueueingGenerator(network, [], [q1], "g1", lambda: exp(1/10))
+network.add_event([p_timer1, p_mode1], [p_timer1, p_mode1, p_ES1], timer, name="t_generate_p1")
+network.add_event([p_timer2, p_mode2], [p_timer2, p_mode2, p_ES2], timer2, name="t_generate_p2")
+network.add_event([p_ES1], [p_net_buff], delay, name="to_net-buff1")
+network.add_event([p_ES2], [p_net_buff], delay, name="to_net-buff2")
+network.add_event([p_net_buff], [p_ES3], delay, name="to_es3")
+network.add_event([p_ES3], [p_done], delay, name="to_done")
 
-s1 = QueueingServer(network, [network_node], [q1], "s1", lambda: 0, c=10)
+reporter = TimesReporter()
+active_model = True
 
-# choice = QueueingChoice(network, [pre_choice], [q2, q3], "choice", [50, 50])
-# network.add_event([q1], [sink1, q1], q_delay)
-s2 = QueueingServer(network, [q1], [sink1], "s2", lambda: 10, c=10)
+while network.clock <= 200 and active_model:
+    bindings = network.bindings()
+    if len(bindings) > 0:
+        timed_binding = network.binding_priority(bindings)
+        network.fire(timed_binding)
+        print(bindings)
+        if network.clock == 100:
+            if len(p_mode1.marking) > 0:
+                p_mode1.remove_token(SimToken(1, time=100))
+            p_mode1.add_token(SimToken(2, time=100))
+            p_mode2.add_token(SimToken(2, time=100))
 
-# s3 = QueueingServer(network, [q3], [sink3], "s3", lambda: exp(1/9))
+        if reporter is not None:
+            reporter.callback(timed_binding)
+    else:
+        active_model = False
 
-# Visualise the simulation problem.
-m = Visualisation(network)
-m.show()
+reporter.validate()
+Visualisation(network).show()
