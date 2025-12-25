@@ -82,8 +82,8 @@ class SimVar(Describable):
             self.marking.remove(token)
         else:
             print("token not found")
-            # raise LookupError("No token '" + token + "' at place '" + str(self) + "'.")          
-    
+            # raise LookupError("No token '" + token + "' at place '" + str(self) + "'.")
+
     def get_id(self):
         return self._id
     

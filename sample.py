@@ -63,7 +63,8 @@ network.add_event([p_ES3], [p_done], dummy, name="to_done")
 
 reporter = TimesReporter()
 active_model = True
-
+switch_mode = True
+switch_mode_net = True
 while network.clock <= 200 and active_model:
     bindings = network.bindings()
     if len(bindings) > 0:
@@ -77,7 +78,7 @@ while network.clock <= 200 and active_model:
 
             p_mode1.add_token(SimToken(2, time=100))
             p_mode2.add_token(SimToken(2, time=100))
-           
+
         if network.clock == 130:
             cfg_list = [token for token in net_cfg.marking if token.value == 1]
             if len(cfg_list) != 0:

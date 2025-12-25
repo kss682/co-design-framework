@@ -1,30 +1,79 @@
 {
     "nodes": [
         {
-            "id": "1",
+            "id": 1,
             "type": "ES"
         },
         {
-            "id": "2",
+            "id": 2,
+            "type": "ES"
+        },
+        {
+            "id": 3,
             "type": "NN"
+        },
+        {
+            "id": 4,
+            "type": "ES"
         }
     ],
 
     "links": [
         {
-            "src": "1",
-            "dst": "2"
+            "src": 1,
+            "dst": 3
+        },
+        {
+            "src": 3,
+            "dst": 4
+        },
+        {
+            "src": 2,
+            "dst": 3
         }
     ],
 
     "streams": [
         {
-            "id": "1",
-            "src": "1",
-            "dst": "2",
-            "release_time": "0",
-            "period": "40",
-            "deadline": "40"
+            "id": 1,
+            "src": 1,
+            "dst": 4,
+            "type": "be",
+            "release_time": 0,
+            "period": 20,
+            "deadline": 20
+        },
+        {
+            "id": 2,
+            "src": 2,
+            "dst": 4,
+            "type": "tt",
+            "release_time": 0,
+            "period": 20,
+            "deadline": 10
         }
-    ]
+    ],
+
+    "modes": {
+        "1": { "name": "s", "streams": [1], "schedule_id": 1 },
+        "2": { "name": "f", "streams": [1, 2], "schedule_id": 2 }
+    },
+
+    "schedules": {
+        "1": [
+            {"prob": 0.5, "delay": 10 },
+            {"prob": 0.5, "delay": 20 }
+        ],
+        "2": [
+            { "prob": 0.9, "delay": 5 },
+            { "prob": 0.1, "delay": 15 }
+        ]
+    },
+
+    "simulation": {
+        "init": 1,
+        "switch_time": 100,
+        "net_reconfig_delay": 5,
+        "sim_time": 200
+    }
 }
