@@ -233,30 +233,33 @@ def main():
     reporter = TimesReporter()
     active_model = True
     switch_time = sim_config.get("switch_time")
-    is_switch_mode = True
-    is_net_reconfig = True
+    app_switch = True
+    net_switch = True
     reconfig_delay = sim_config.get("net_reconfig_delay")
 
     while network.clock <= sim_config.get("sim_time") and active_model:
         bindings = network.bindings()
         if len(bindings) > 0:
-            timed_binding = network.binding_priority(bindings)
 
-            network.fire(timed_binding)
-            if network.clock == switch_time:
-                logger.info("Mode switch triggered at %s", switch_time)
+            # print(timed_binding)
+            if network.clock >= switch_time and app_switch:
+                logger.info("Mode switch triggered at %s", network.clock)
                 for _id, stream in streams.items():
-                    cfg_list = [token for token in places[stream.src._id]["mode"].marking if token.value._id == 1]
+                    # logger.info("Streams "%)
+                    cfg_list = [token for token in places[stream.src._id]["mode"].marking if token.value._id == sim_config.get("init")]
                     if len(cfg_list) != 0:
-                        places[src._id]["mode"].marking.clear()
-                    print(cfg_list)
+                        for tk in cfg_list:
+                            places[stream.src._id]["mode"].remove_token(tk)
+                        places[stream.src._id]["timer"].marking.clear()
                     # exit(1)
                     if _id in modes[1].streams:
-                        places[stream.src._id]["mode"].add_token(SimToken(modes[1], time=switch_time))
-                        places[stream.src._id]["timer"].add_token(SimToken(stream, time=switch_time))
-                
-            
-            if network.clock >= switch_time + reconfig_delay and is_net_reconfig:
+                        places[stream.src._id]["mode"].add_token(SimToken(modes[1], time=network.clock))
+                        places[stream.src._id]["timer"].add_token(SimToken(stream, time=network.clock))
+                    print(places[stream.src._id]["timer"].marking)
+                    
+                app_switch = False
+                bindings = network.bindings()
+            if network.clock >= switch_time + reconfig_delay and net_switch:
                 logger.info("network reconfig triggered at %s", network.clock)
                 for _id, node in nodes.items():
                     if node._type == "NN":
@@ -264,12 +267,16 @@ def main():
                         if len(cfg_list) != 0:
                             for tk in cfg_list:
                                 places[_id]["mode"].remove_token(tk)
-                        print(modes[1]._id)
                         places[_id]["mode"].add_token(SimToken(modes[1], time=switch_time+reconfig_delay))
-                is_net_reconfig = False
-
+                net_switch = False
+                bindings = network.bindings()
 
             
+            print(bindings)
+            timed_binding = network.binding_priority(bindings)
+            print(timed_binding)
+            network.fire(timed_binding)
+
             # print(bindings)
             if reporter is not None:
                 reporter.callback(timed_binding)
