@@ -1,6 +1,11 @@
 """
 Docstring for models.node
 """
+from enum import Enum
+
+class NodeTypes(Enum):
+    ES = "end_system"
+    NN = "network_node"
 
 class Node:
     """

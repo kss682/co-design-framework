@@ -1,29 +1,32 @@
 """"
     Docs
 """
+from dataclasses import dataclass
+from models.node import Node
 
+@dataclass
 class Stream:
     """
     Docstring for Message
     """
+    _id: int
+    src: Node
+    dst: Node
+    traffic_type:str
+    release_time: int
+    period: int
+    deadline: int
+    # birthtime: int
 
-    def __init__(
-        self,
-        _id,
-        _src,
-        _dst,
-        _type,
-        _release_time,
-        _period,
-        _deadline
-        ):
-        self._id = _id
-        self.src = _src
-        self.dst = _dst
-        self.traffic_type = _type
-        self.release_time = _release_time
-        self.period = _period
-        self.deadline = _deadline
+    # def reset_birthtime(self):
+        # self.birthtime += self.period
 
-    def __str__(self):
-        return "stream_" + str(self._id)
+@dataclass
+class Packet:
+    stream_id: int
+    seq_id: int
+    # birth_time: int
+
+@dataclass
+class Timer:
+    seq_id: int
