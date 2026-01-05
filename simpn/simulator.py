@@ -1028,6 +1028,7 @@ class SimProblem:
                 i += 1
 
         for i in range(len(result)):
+            
             if result[i] is not None:
                 if isinstance(event.outgoing[i], SimVarQueue):
                     print("Queue")
@@ -1037,6 +1038,7 @@ class SimProblem:
                         raise TypeError("Deprecated functionality: Event " + str(event) + ": generates a token with a delay of 0, but a time > 0, for variable " + str(event.outgoing[i]) + " for values " + str(variable_assignment) + ". It seems you are using the time of the token to represent the delay.")
                     token = SimToken(result[i].value, time=self.clock + result[i].delay)
                     event.outgoing[i].add_token(token)
+
 
     def step(self):
         """

@@ -113,20 +113,16 @@ def close_pgm():
 
 
 def generate_packet_function(mode_list):
-    def timer_function(mode, timer, stream):
+    def timer_function(mode, packet, stream):
         for ob in mode_list:
             if mode._id == ob._id and stream._id in ob.streams:
                 # current_birthtime = stream.birthtime
                 # stream.reset_birthtime()
                 return [        
                     SimToken(mode, delay=stream.period),
-                    SimToken(Timer(seq_id=timer.seq_id+1), delay=stream.period),
+                    SimToken(Packet(seq_id=packet.seq_id+1, stream_id=stream._id), delay=stream.period),
                     SimToken(stream, delay=stream.period),
-                    SimToken(Packet(
-                        stream_id=stream._id,
-                        seq_id=timer.seq_id,
-                        ),
-                    ),
+                    SimToken(packet)
                 ]
         return [
             SimToken(mode),
@@ -177,29 +173,36 @@ def main():
     network = SimProblem()
 
     places = defaultdict(dict)
+    generate_events = list()
+    done_events = list()
+
     for _id, stream in streams.items():
         src_node = stream.src
         places[src_node._id]["mode"] = network.add_var("p_"+str(src_node._id)+"_mode")
-        places[src_node._id]["timer"] = network.add_var("p_"+str(src_node._id)+"_timer")
+        places[src_node._id]["packet"] = network.add_var("p_"+str(src_node._id)+"_packet")
         places[src_node._id]["stream"] = network.add_var("p_"+str(src_node._id) + "_stream")
         places[src_node._id]["node"] = network.add_var("p_"+str(src_node._id)+"_es")
+        event_name = "t_generate_"+str(stream._id)
         network.add_event(
-            [places[src_node._id]["mode"], places[src_node._id]["timer"], places[src_node._id]["stream"]],
-            [places[src_node._id]["mode"], places[src_node._id]["timer"], places[src_node._id]["stream"],places[src_node._id]["node"]],
+            [places[src_node._id]["mode"], places[src_node._id]["packet"], places[src_node._id]["stream"]],
+            [places[src_node._id]["mode"], places[src_node._id]["packet"], places[src_node._id]["stream"],places[src_node._id]["node"]],
             generate_packet_function(modes),
-            name="t_generate_"+str(stream._id)
+            name=event_name
         )
+        generate_events.append(event_name)
         
         dst_node = stream.dst
         if places.get(dst_node._id, None) is None:
             places[dst_node._id]["node"] = network.add_var("p_"+str(dst_node._id)+"_es")
             places[dst_node._id]["done"] = network.add_var("p_"+str(dst_node._id)+"_done")
+            event_name="to_done_"+str(dst_node._id)
             network.add_event(
                 [places[dst_node._id]["node"]],
                 [places[dst_node._id]["done"]],
                 lambda p: [SimToken(p)],
-                name="to_done_"+str(dst_node._id)
+                name=event_name
             )
+            done_events.append(event_name)
 
     for link in links:
         src, dest = link.src, link.dst
@@ -231,13 +234,13 @@ def main():
         if mode._id == sim_config.get("init"):
             for st in mode.streams:
                 places[st]["mode"].put(mode)
-                places[st]["timer"].put(Timer(seq_id=1))
+                places[st]["packet"].put(Packet(seq_id=1, stream_id=st))
                 places[st]["stream"].put(streams.get(st))
             for key, place in places.items():
                 if nodes.get(key)._type == "NN":
                     place["mode"].put(mode)
 
-    reporter = TimesReporter()
+    reporter = TimesReporter(set(generate_events), set(done_events), streams=streams)
     active_model = True
     switch_time = sim_config.get("switch_time")
     app_switch = True
@@ -256,10 +259,11 @@ def main():
 
                 if _id in modes[1].streams:
                     places[stream.src._id]["mode"].add_token(SimToken(modes[1], time=network.clock))
-                    if len(places[stream.src._id]["timer"].marking) == 0:
-                        places[stream.src._id]["timer"].add_token(
-                            SimToken(Timer(
-                                seq_id=1
+                    if len(places[stream.src._id]["packet"].marking) == 0:
+                        places[stream.src._id]["packet"].add_token(
+                            SimToken(Packet(
+                                seq_id=1,
+                                stream_id=stream._id
                             ),
                                 time=network.clock
                             )
@@ -283,12 +287,12 @@ def main():
         if len(bindings) > 0:
             timed_binding = network.binding_priority(bindings)
             network.fire(timed_binding)
-            # if reporter is not None:
-                # reporter.callback(timed_binding)
+            if reporter is not None:
+                reporter.callback(timed_binding)
         else:
             active_model = False
 
-    # reporter.e2e_validate()
+    reporter.e2e_validate()
     vis = Visualisation(network)
     vis.show()
 

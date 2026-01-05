@@ -49,8 +49,8 @@
             "dst": 4,
             "type": "tt",
             "release_time": 0,
-            "period": 20,
-            "deadline": 10
+            "period": 5,
+            "deadline": 5
         }
     ],
 
@@ -61,7 +61,7 @@
 
     "schedules": {
         "1": [
-            {"prob": 0.5, "delay": 10 },
+            {"prob": 0.9, "delay": 10 },
             {"prob": 0.5, "delay": 20 }
         ],
         "2": [
@@ -73,7 +73,7 @@
     "simulation": {
         "init": 1,
         "switch_time": 100,
-        "net_reconfig_delay": 5,
+        "net_reconfig_delay": 10,
         "sim_time": 200
     }
 }
