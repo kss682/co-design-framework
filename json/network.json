@@ -70,10 +70,9 @@
         ]
     },
 
-    "simulation": {
-        "init": 1,
-        "switch_time": 100,
-        "net_reconfig_delay": 10,
-        "sim_time": 200
-    }
+    "mode_switch":[
+        [1, 0],
+        [2, 100],
+        [1, 200]
+    ]
 }

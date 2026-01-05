@@ -3,10 +3,13 @@ import json
 import logging
 import random
 from collections import defaultdict
+from collections import deque
+
 from models.node import Node
 from models.links import Link
 from models.stream import Stream, Packet, Timer
 from models.mode import Mode
+from switch_module.synchronized_switch import SynchSwitch
 from reporter.time_reporter import TimesReporter
 from simpn.simulator import SimProblem, SimToken
 from simpn.visualisation import Visualisation
@@ -46,7 +49,7 @@ def load_network(data: dict):
     nodes:dict = {}
     links:list = []
     streams:dict = {}
-    modes:list = []
+    modes:dict = {}
 
     # Need to extract this out into a validation function that does strict checking on the json
     if data.get('nodes', None) is None or data.get('links', None) is None or data.get('streams', None) is None:        
@@ -86,19 +89,18 @@ def load_network(data: dict):
     for mode_id in data.get("modes").keys():
         mode = data.get("modes")[mode_id]
         logger.info("%s", mode)
-        modes.append(
-            Mode(
+        modes[int(mode_id)] = Mode(
              _id=int(mode_id),
              _name=mode.get("name"),
              _streams=mode.get("streams"),
              _schedule=mode.get("schedule_id")
             )
-        )
     logger.info(" %s modes found in the network", len(modes))
     
     schedules = data.get("schedules")
-    sim_config = data.get("simulation")
-    return nodes, links, streams, modes, schedules, sim_config
+    mode_switch = data.get("mode_switch")
+    print(mode_switch)
+    return nodes, links, streams, modes, schedules, deque(mode_switch)
 
 
 def close_pgm():
@@ -112,18 +114,18 @@ def close_pgm():
     exit(1)
 
 
-def generate_packet_function(mode_list):
+def generate_packet_function(mode_dict):
     def timer_function(mode, packet, stream):
-        for ob in mode_list:
-            if mode._id == ob._id and stream._id in ob.streams:
+
+        if mode_dict.get(mode._id, None) is not None and stream._id in mode_dict.get(mode._id).streams:
                 # current_birthtime = stream.birthtime
                 # stream.reset_birthtime()
-                return [        
-                    SimToken(mode, delay=stream.period),
-                    SimToken(Packet(seq_id=packet.seq_id+1, stream_id=stream._id), delay=stream.period),
-                    SimToken(stream, delay=stream.period),
-                    SimToken(packet)
-                ]
+            return [        
+                SimToken(mode, delay=stream.period),
+                SimToken(Packet(seq_id=packet.seq_id+1, stream_id=stream._id), delay=stream.period),
+                SimToken(stream, delay=stream.period),
+                SimToken(packet)
+            ]
         return [
             SimToken(mode),
             SimToken(stream),
@@ -158,7 +160,7 @@ def main():
     )
     parser.add_argument(
         "-f", 
-        "--file", 
+        "--file",
         required=True
     )
     args = parser.parse_args()
@@ -168,8 +170,8 @@ def main():
     data = load_data(nw_model_file)   
     if data is None:
         close_pgm()
-    nodes, links, streams, modes, sched, sim_config = load_network(data=data)
-    
+    nodes, links, streams, modes, sched, mode_switch = load_network(data=data)
+    print(mode_switch)
     network = SimProblem()
 
     places = defaultdict(dict)
@@ -229,60 +231,38 @@ def main():
                 name="t_es_"+str(src._id)
             )
 
+    # Init current mode
+    current_mode_id, time = mode_switch.popleft()
+    print(current_mode_id, time)
+    mode = modes.get(current_mode_id)
+    print(mode)
+    for st in mode.streams:
+        places[st]["mode"].put(mode)
+        places[st]["packet"].put(Packet(seq_id=1, stream_id=st))
+        places[st]["stream"].put(streams.get(st))
 
-    for mode in modes:
-        if mode._id == sim_config.get("init"):
-            for st in mode.streams:
-                places[st]["mode"].put(mode)
-                places[st]["packet"].put(Packet(seq_id=1, stream_id=st))
-                places[st]["stream"].put(streams.get(st))
-            for key, place in places.items():
-                if nodes.get(key)._type == "NN":
-                    place["mode"].put(mode)
+    for key, place in places.items():
+        if nodes.get(key)._type == "NN":
+            place["mode"].put(mode)
 
+    
     reporter = TimesReporter(set(generate_events), set(done_events), streams=streams)
+    sync_switch = SynchSwitch(
+        modes=modes, 
+        streams=streams,
+        places=places,
+        nodes=nodes, 
+        mode_switch=mode_switch
+    )
     active_model = True
-    switch_time = sim_config.get("switch_time")
     app_switch = True
     net_switch = True
-    reconfig_delay = sim_config.get("net_reconfig_delay")
 
-    while network.clock <= sim_config.get("sim_time") and active_model:
-        
-
-        if network.clock >= switch_time and app_switch:
+    while network.clock <= 500 and active_model:
+        if sync_switch.check_switch(network_clock=network.clock):
             logger.info("Mode switch triggered at %s", network.clock)
-            for _id, stream in streams.items():
-                places[stream.src._id]["mode"].marking.clear()
-                places[stream.src._id]["stream"].marking.clear()
+            sync_switch.switch(network_clock=network.clock)
 
-
-                if _id in modes[1].streams:
-                    places[stream.src._id]["mode"].add_token(SimToken(modes[1], time=network.clock))
-                    if len(places[stream.src._id]["packet"].marking) == 0:
-                        places[stream.src._id]["packet"].add_token(
-                            SimToken(Packet(
-                                seq_id=1,
-                                stream_id=stream._id
-                            ),
-                                time=network.clock
-                            )
-                        )
-                    places[stream.src._id]["stream"].add_token(SimToken(stream, time=network.clock))
-
-
-             
-            app_switch = False
-           
-
-        if network.clock >= switch_time + reconfig_delay and net_switch:
-            logger.info("network reconfig triggered at %s", network.clock)
-            for _id, node in nodes.items():
-                if node._type == "NN":
-                    places[_id]["mode"].marking.clear()
-                    places[_id]["mode"].add_token(SimToken(modes[1], time=switch_time+reconfig_delay))
-            net_switch = False
-            
         bindings = network.bindings()
         if len(bindings) > 0:
             timed_binding = network.binding_priority(bindings)
