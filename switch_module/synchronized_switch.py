@@ -39,9 +39,11 @@ class SynchSwitch:
         switch_time = deque()
 
         for id, time in mode_switch:
-            switch_time.append([id, 
-                           math.ceil(time/self.hyper_cycle)*self.hyper_cycle
-                           ])
+            if time%self.hyper_cycle == 0:
+                tmp = math.ceil((time+1)/self.hyper_cycle)*self.hyper_cycle
+            else:
+                tmp = math.ceil(time/self.hyper_cycle)*self.hyper_cycle
+            switch_time.append([id, tmp])
         logger.info(f"Calculating switching time: {switch_time}")
         return switch_time
 
@@ -50,17 +52,23 @@ class SynchSwitch:
 
     
     def switch(self, network_clock):
+        """
+        Docstring for switch
+        
+        :param self: Description
+        :param network_clock: Description
+        """
         next_mode = self.modes.get(self.next_mode[0])
+
         for _id, stream in self.streams.items():
             self.places[stream.src._id]["mode"].marking.clear()
             self.places[stream.src._id]["stream"].marking.clear()
+            self.places[stream.src._id]["packet"].marking.clear()
 
-            
             if _id in next_mode.streams:
                 self.places[stream.src._id]["mode"].add_token(SimToken(next_mode, time=network_clock))
-                if len(self.places[stream.src._id]["packet"].marking) == 0:
-                    self.places[stream.src._id]["packet"].add_token(
-                        SimToken(Packet(
+                self.places[stream.src._id]["packet"].add_token(
+                       SimToken(Packet(
                             seq_id=1,
                             stream_id=stream._id
                         ),
@@ -68,8 +76,6 @@ class SynchSwitch:
                         )
                     )
                 self.places[stream.src._id]["stream"].add_token(SimToken(stream, time=network_clock))
-
-
        
         logger.info("network reconfig triggered at %s", network_clock)
         for _id, node in self.nodes.items():

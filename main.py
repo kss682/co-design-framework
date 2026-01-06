@@ -14,11 +14,12 @@ from reporter.time_reporter import TimesReporter
 from simpn.simulator import SimProblem, SimToken
 from simpn.visualisation import Visualisation
 
-
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# DATA:dict = {}
+SWITCH_STRATEGY = [
+    SynchSwitch
+]
 
 
 def load_data(filename:str):
@@ -150,29 +151,13 @@ def generate_nw_function(sched):
     return delay_function
 
 
-def main():
-    """
-    Docstring for main
-    """
-    logger.info("starting petri net - network simulator")
-    parser = argparse.ArgumentParser(
-        prog="Petri Net - Network Simulator",
-    )
-    parser.add_argument(
-        "-f", 
-        "--file",
-        required=True
-    )
-    args = parser.parse_args()
-    nw_model_file = args.file
-    logger.info("fetching network model from %s", nw_model_file)
-
-    data = load_data(nw_model_file)   
-    if data is None:
-        close_pgm()
-    nodes, links, streams, modes, sched, mode_switch = load_network(data=data)
-    print(mode_switch)
-    network = SimProblem()
+def build_petri_net(
+        network,
+        modes,
+        links,
+        streams,
+        sched
+    ):
 
     places = defaultdict(dict)
     generate_events = list()
@@ -230,12 +215,32 @@ def main():
                 lambda p: [SimToken(p)],
                 name="t_es_"+str(src._id)
             )
+    
+    return places, generate_events, done_events
 
+
+def run_simulation(nodes, links, streams, modes, mode_switch, sched, switch_class):
+    """
+    Docstring for run_simulation
+    
+    :param nodes: Description
+    :param links: Description
+    :param streams: Description
+    :param modes: Description
+    :param mode_switch: Description
+    :param sched: Description
+    """
+    network = SimProblem()
+    places, generate_events, done_events = build_petri_net(
+        network,
+        modes,
+        links,
+        streams,
+        sched
+    )
     # Init current mode
     current_mode_id, time = mode_switch.popleft()
-    print(current_mode_id, time)
     mode = modes.get(current_mode_id)
-    print(mode)
     for st in mode.streams:
         places[st]["mode"].put(mode)
         places[st]["packet"].put(Packet(seq_id=1, stream_id=st))
@@ -247,7 +252,7 @@ def main():
 
     
     reporter = TimesReporter(set(generate_events), set(done_events), streams=streams)
-    sync_switch = SynchSwitch(
+    sync_switch = switch_class(
         modes=modes, 
         streams=streams,
         places=places,
@@ -255,15 +260,15 @@ def main():
         mode_switch=mode_switch
     )
     active_model = True
-    app_switch = True
-    net_switch = True
 
     while network.clock <= 500 and active_model:
+        bindings = network.bindings()
         if sync_switch.check_switch(network_clock=network.clock):
             logger.info("Mode switch triggered at %s", network.clock)
             sync_switch.switch(network_clock=network.clock)
-
-        bindings = network.bindings()
+            bindings = network.bindings()
+        
+        # logger.info(f"{bindings} {network.clock}")
         if len(bindings) > 0:
             timed_binding = network.binding_priority(bindings)
             network.fire(timed_binding)
@@ -271,10 +276,43 @@ def main():
                 reporter.callback(timed_binding)
         else:
             active_model = False
+    # Visualisation(network).show()
+    return reporter    
 
-    reporter.e2e_validate()
-    vis = Visualisation(network)
-    vis.show()
+def main():
+    """
+    Docstring for main
+    """
+    logger.info("starting petri net - network simulator")
+    parser = argparse.ArgumentParser(
+        prog="Petri Net - Network Simulator",
+    )
+    parser.add_argument(
+        "-f", 
+        "--file",
+        required=True
+    )
+    args = parser.parse_args()
+    nw_model_file = args.file
+    logger.info("fetching network model from %s", nw_model_file)
+
+    data = load_data(nw_model_file)   
+    if data is None:
+        close_pgm()
+    nodes, links, streams, modes, sched, mode_switch = load_network(data=data)
+    
+    for switch_class in SWITCH_STRATEGY:
+        reporter = run_simulation(
+            nodes=nodes,
+            links=links,
+            streams=streams,
+            modes=modes,
+            sched=sched,
+            mode_switch=mode_switch,
+            switch_class=switch_class
+        )
+        reporter.e2e_validate()
+
 
 
 

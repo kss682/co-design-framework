@@ -26,7 +26,7 @@ class TimesReporter(Reporter):
                 if token.stream_id not in self.end_to_end:
                      self.end_to_end[token.stream_id] = {}
                 self.end_to_end[token.stream_id][token.seq_id] = { "release_time": time }
-            logger.info(self.end_to_end)
+            # logger.info(self.end_to_end)
             if event.get_id() in self.done_events and isinstance(token, Packet):
                 if token.stream_id in self.end_to_end and token.seq_id in self.end_to_end[token.stream_id]:
                     self.end_to_end[token.stream_id][token.seq_id]["complete_time"] = time
@@ -39,10 +39,10 @@ class TimesReporter(Reporter):
         rows = []
         for stream_id, packets in self.end_to_end.items():
             for pack_id, times in packets.items():
-                print(times)
+                # print(times)
                 release = times.get("release_time")
                 complete = times.get("complete_time", None)
-                print(complete, release)
+                # print(complete, release)
                 deadline = self.streams.get(stream_id).deadline
                 end_to_end = None
                 if release is not None and complete is not None:
