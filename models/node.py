@@ -2,7 +2,7 @@
 Docstring for models.node
 """
 from enum import Enum
-
+from collections import defaultdict
 class NodeTypes(Enum):
     ES = "end_system"
     NN = "network_node"
@@ -16,3 +16,4 @@ class Node:
     def __init__(self, _id: int, _type: str):
         self._id = _id
         self._type = _type
+        self.last_packet_seen = defaultdict(dict)

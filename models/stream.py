@@ -25,7 +25,8 @@ class Stream:
 class Packet:
     stream_id: int
     seq_id: int
-    # birth_time: int
+    packet_time: int
+    mode_seq: str
 
 @dataclass
 class Timer:

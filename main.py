@@ -11,6 +11,7 @@ from models.stream import Stream, Packet, Timer
 from models.mode import Mode
 from switch_module.synchronized_switch import SynchSwitch
 from reporter.time_reporter import TimesReporter
+from reporter.delivery_constraints import PacketDeliveryConstraints
 from simpn.simulator import SimProblem, SimToken
 from simpn.visualisation import Visualisation
 
@@ -100,8 +101,24 @@ def load_network(data: dict):
     
     schedules = data.get("schedules")
     mode_switch = data.get("mode_switch")
-    print(mode_switch)
-    return nodes, links, streams, modes, schedules, deque(mode_switch)
+    
+    link_delays = data.get("link_delay", {})
+    pre_condition_rate = data.get("preconditions", {}).get("network_nodes")
+
+    delivery_constraints = {}
+    for constranint in data.get("delivery_constraints", []):
+        delivery_constraints[(constranint.get("mode_id"), constranint.get("stream_id"))] = PacketDeliveryConstraints(**constranint)
+        
+    return (nodes, 
+            links, 
+            streams, 
+            modes, 
+            schedules, 
+            deque(mode_switch),
+            link_delays,
+            pre_condition_rate,
+            delivery_constraints
+    )
 
 
 def close_pgm():
@@ -123,7 +140,7 @@ def generate_packet_function(mode_dict):
                 # stream.reset_birthtime()
             return [        
                 SimToken(mode, delay=stream.period),
-                SimToken(Packet(seq_id=packet.seq_id+1, stream_id=stream._id), delay=stream.period),
+                SimToken(Packet(seq_id=packet.seq_id+1, stream_id=stream._id, packet_time=0, mode_seq=packet.mode_seq), delay=stream.period),
                 SimToken(stream, delay=stream.period),
                 SimToken(packet)
             ]
@@ -136,19 +153,56 @@ def generate_packet_function(mode_dict):
     return timer_function
 
 
-def generate_nw_function(sched):
+def generate_nw_function(sched, precondition_rate, packet_last_seen):
     def delay_function(mode, p):
+        now = p.packet_time
+        st_id = p.stream_id
         rand = random.random()
         mode_id = str(mode._id)
+
+        expected = precondition_rate.get(str(st_id)).get("rate", None)
+        if expected is None:
+            return [SimToken(mode), None]
+
+        # prev = packet_last_seen.get(mode_id, {}).get(st_id, None)
+        # logger.info(f"{prev}: {now}: {expected}")
+        if now > expected:
+            return [SimToken(mode), None]
+
+        # packet_last_seen[mode_id][st_id] = now
+        # Avoid the hard coded index usage
         if rand <= sched.get(mode_id)[0]["prob"]:
             delay =  sched.get(mode_id)[0]["delay"]
         else:
             delay = sched.get(mode_id)[1]["delay"]
         return [
             SimToken(mode),
-            SimToken(p, delay=delay)
+            SimToken(Packet(
+                stream_id=p.stream_id,
+                seq_id=p.seq_id,
+                packet_time=p.packet_time+delay,
+                mode_seq=p.mode_seq
+            ), delay=delay)
         ]
     return delay_function
+
+
+def generate_link_delay_function(link_delay):
+    def delay(packet):
+        rand = random.random()
+        if rand <= link_delay[0]["prob"]:
+            delay = link_delay[0]["delay"]
+        else:
+            delay = link_delay[1]["delay"]
+        return [SimToken(
+            Packet(stream_id=packet.stream_id, 
+                   seq_id=packet.seq_id,
+                   packet_time=packet.packet_time+delay,
+                   mode_seq=packet.mode_seq
+                   ),
+                   delay=delay
+        )]
+    return delay
 
 
 def build_petri_net(
@@ -156,7 +210,9 @@ def build_petri_net(
         modes,
         links,
         streams,
-        sched
+        sched,
+        link_delays,
+        precondition_rate
     ):
 
     places = defaultdict(dict)
@@ -196,30 +252,41 @@ def build_petri_net(
         if places.get(src._id, None) is None:
             places[src._id]["node"] = network.add_var("nn_"+str(src._id))
             places[src._id]["mode"] = network.add_var("nn_"+str(src._id)+"_mode")
-
+            places[src._id]["packet_last_seen"] = defaultdict(dict)
         if places.get(dest._id, None) is None:
             places[dest._id]["node"] = network.add_var("nn_"+str(dest._id))
             places[dest._id]["mode"] = network.add_var("nn_"+str(dest._id)+"_mode")
-        
+            places[dest._id]["packet_last_seen"] = defaultdict(dict)
+
         if src._type == "NN":
             network.add_event(
                 [places[src._id]["mode"], places[src._id]["node"]],
                 [places[src._id]["mode"], places[dest._id]["node"]],
-                generate_nw_function(sched),
+                generate_nw_function(sched, precondition_rate, places[src._id]["packet_last_seen"]),
                 name = "t_NN_"+str(src._id)
             )
         else:
             network.add_event(
                 [places[src._id]["node"]],
                 [places[dest._id]["node"]],
-                lambda p: [SimToken(p)],
+                generate_link_delay_function(link_delay=link_delays),
                 name="t_es_"+str(src._id)
             )
     
     return places, generate_events, done_events
 
 
-def run_simulation(nodes, links, streams, modes, mode_switch, sched, switch_class):
+def run_simulation(nodes, 
+                   links, 
+                   streams, 
+                   modes, 
+                   mode_switch, 
+                   sched, 
+                   switch_class, 
+                   link_delays, 
+                   precondition_rate,
+                   delivery_constraints
+                    ):
     """
     Docstring for run_simulation
     
@@ -236,14 +303,16 @@ def run_simulation(nodes, links, streams, modes, mode_switch, sched, switch_clas
         modes,
         links,
         streams,
-        sched
+        sched,
+        link_delays,
+        precondition_rate
     )
     # Init current mode
     current_mode_id, time = mode_switch.popleft()
     mode = modes.get(current_mode_id)
     for st in mode.streams:
         places[st]["mode"].put(mode)
-        places[st]["packet"].put(Packet(seq_id=1, stream_id=st))
+        places[st]["packet"].put(Packet(seq_id=1, stream_id=st, packet_time=0, mode_seq=str(current_mode_id)+"@" + str(time)))
         places[st]["stream"].put(streams.get(st))
 
     for key, place in places.items():
@@ -251,13 +320,14 @@ def run_simulation(nodes, links, streams, modes, mode_switch, sched, switch_clas
             place["mode"].put(mode)
 
     
-    reporter = TimesReporter(set(generate_events), set(done_events), streams=streams)
+    reporter = TimesReporter(set(generate_events), set(done_events), streams=streams, delivery_constraints=delivery_constraints)
     sync_switch = switch_class(
         modes=modes, 
         streams=streams,
         places=places,
         nodes=nodes, 
-        mode_switch=mode_switch
+        mode_switch=mode_switch,
+
     )
     active_model = True
 
@@ -267,6 +337,7 @@ def run_simulation(nodes, links, streams, modes, mode_switch, sched, switch_clas
             logger.info("Mode switch triggered at %s", network.clock)
             sync_switch.switch(network_clock=network.clock)
             bindings = network.bindings()
+            
         
         # logger.info(f"{bindings} {network.clock}")
         if len(bindings) > 0:
@@ -276,7 +347,7 @@ def run_simulation(nodes, links, streams, modes, mode_switch, sched, switch_clas
                 reporter.callback(timed_binding)
         else:
             active_model = False
-    # Visualisation(network).show()
+
     return reporter    
 
 def main():
@@ -299,7 +370,15 @@ def main():
     data = load_data(nw_model_file)   
     if data is None:
         close_pgm()
-    nodes, links, streams, modes, sched, mode_switch = load_network(data=data)
+    (nodes, 
+     links, 
+     streams, 
+     modes, 
+     sched, 
+     mode_switch, 
+     link_delays, 
+     precondition_rate, 
+     delivery_constraints) = load_network(data=data)
     
     for switch_class in SWITCH_STRATEGY:
         reporter = run_simulation(
@@ -309,10 +388,13 @@ def main():
             modes=modes,
             sched=sched,
             mode_switch=mode_switch,
-            switch_class=switch_class
+            switch_class=switch_class,
+            link_delays=link_delays,
+            precondition_rate=precondition_rate,
+            delivery_constraints=delivery_constraints
         )
         reporter.e2e_validate()
-
+        reporter.validate_throuput()
 
 
 

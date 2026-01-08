@@ -74,5 +74,44 @@
         [1, 0],
         [2, 100],
         [1, 200]
+    ],
+
+    "link_delay": [
+        { "prob": 0.95, "delay": 0.5},
+        { "prob": 0.05, "delay": 2}
+    ],
+
+    "preconditions": {
+        "network_nodes": {
+            "1": {
+                "rate": 0.5
+            },
+            "2": {
+                "rate": 0.5
+            }
+        }
+    },
+
+    "delivery_constraints": [
+        {
+            "mode_id": 1,
+            "stream_id": 1,
+            "min_packets": 2,
+            "window_size": 3
+        },
+        {
+            "mode_id": 2,
+            "stream_id": 1,
+            "min_packets": 1,
+            "window_size": 3
+        },
+        {
+            "mode_id": 2,
+            "stream_id": 2,
+            "min_packets": 2,
+            "window_size": 3
+        }
     ]
+    
+    
 }

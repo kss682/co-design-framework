@@ -15,6 +15,7 @@ class SynchSwitch:
         considering the hypercycle of all streams in the model
     This is based on the assumption that all the schedules are ready to be configured within a hypercycle
     """
+    name = "hypercycle_switch"
     def __init__(self, streams, modes, places, nodes, mode_switch):
         self.modes = modes
         self.streams = streams
@@ -70,7 +71,9 @@ class SynchSwitch:
                 self.places[stream.src._id]["packet"].add_token(
                        SimToken(Packet(
                             seq_id=1,
-                            stream_id=stream._id
+                            stream_id=stream._id,
+                            packet_time=0,
+                            mode_seq=str(next_mode._id)+"@"+str(network_clock)
                         ),
                             time=network_clock
                         )
@@ -82,6 +85,7 @@ class SynchSwitch:
             if node._type == "NN":
                 self.places[_id]["mode"].marking.clear()
                 self.places[_id]["mode"].add_token(SimToken(next_mode, time=network_clock))
+                self.places[_id]["packet_last_seen"].clear()
         net_switch = False
 
         self.next_mode = self.mode_switch.popleft() if len(self.mode_switch) > 0 else None
