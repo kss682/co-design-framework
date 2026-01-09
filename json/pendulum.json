@@ -1,0 +1,107 @@
+{
+    "nodes": [
+        {
+            "id": 1,
+            "type": "ES"
+        },
+        {
+            "id": 2,
+            "type": "ES"
+        },
+        {
+            "id": 3,
+            "type": "NN"
+        }
+    ],
+
+    "links": [
+        {
+            "src": 1,
+            "dst": 3
+        },
+        {
+            "src": 3,
+            "dst": 2
+        }
+    ],
+
+    "streams": [
+        {
+            "id": 1,
+            "src": 1,
+            "dst": 2,
+            "type": "be",
+            "release_time": 0,
+            "period": 20,
+            "deadline": 20
+        },
+        {
+            "id": 2,
+            "src": 1,
+            "dst": 2,
+            "type": "tt",
+            "release_time": 0,
+            "period": 5,
+            "deadline": 5
+        }
+    ],
+
+    "modes": {
+        "1": { "name": "s", "streams": [1], "schedule_id": 1 },
+        "2": { "name": "f", "streams": [1, 2], "schedule_id": 2 }
+    },
+
+    "schedules": {
+        "1": [
+            {"prob": 0.99, "delay": 10 },
+            {"prob": 0.01, "delay": 11 }
+        ],
+        "2": [
+            { "prob": 0.99, "delay": 4 },
+            { "prob": 0.01, "delay": 5 }
+        ]
+    },
+
+    "mode_switch":[
+        [1, 0],
+        [2, 100],
+        [1, 200]
+    ],
+
+    "link_delay": [
+        { "prob": 0.95, "delay": 0.5},
+        { "prob": 0.05, "delay": 2}
+    ],
+
+    "preconditions": {
+        "network_nodes": {
+            "1": {
+                "rate": 0.5
+            },
+            "2": {
+                "rate": 0.5
+            }
+        }
+    },
+
+    "delivery_constraints": [
+        {
+            "mode_id": 1,
+            "stream_id": 1,
+            "min_packets": 2,
+            "window_size": 3
+        },
+        {
+            "mode_id": 2,
+            "stream_id": 1,
+            "min_packets": 1,
+            "window_size": 3
+        },
+        {
+            "mode_id": 2,
+            "stream_id": 2,
+            "min_packets": 2,
+            "window_size": 3
+        }
+    ]    
+}

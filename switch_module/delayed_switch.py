@@ -1,49 +1,26 @@
-import math
 from collections import deque
 from loguru import logger
 from models.stream import Packet
 from simpn.simulator import SimToken
 
-class SynchSwitch:
-    """
-    Docstring for SynchSwitch
-        - implments the logic for synced switching by 
-        considering the hypercycle of all streams in the model
-    This is based on the assumption that all the schedules are ready to be configured within a hypercycle
-    """
-    name = "hypercycle_switch"
+class DelayedSwitch:
+    name = "delayed_switch"
+
     def __init__(self, streams, modes, places, nodes, mode_switch):
         self.modes = modes
         self.streams = streams
         self.places = places
         self.nodes = nodes
-        self.hyper_cycle = self._calculate_hypercycle()
-        self.app_mode_switch = self._calculate_switchingtime(mode_switch)
-        self.net_mode_switch = self._calculate_switchingtime(mode_switch)
+        self.app_mode_switch = deque(mode_switch)
+        self.net_mode_switch = self._calculate_net_reconfig(mode_switch)
         self.next_app_mode = self.app_mode_switch.popleft() if len(self.app_mode_switch) > 0 else None
         self.next_net_mode = self.net_mode_switch.popleft() if len(self.net_mode_switch) > 0 else None
 
-    def _calculate_hypercycle(self):
-        periods = [v.period for key, v in self.streams.items()]
-        return math.lcm(*periods)
-    
-    def _calculate_switchingtime(self, mode_switch):
-        """
-        Docstring for _calculate_switchingtime
-        
-        :param self: Description
-        :param mode_switch: Description [(mode_id, switch_time)] 
-                            switch time represents application time at which application requests switch
-        """
+    def _calculate_net_reconfig(self, mode_switch):
         switch_time = deque()
-
-        for id, time in mode_switch:
-            if time%self.hyper_cycle == 0:
-                tmp = math.ceil((time+1)/self.hyper_cycle)*self.hyper_cycle
-            else:
-                tmp = math.ceil(time/self.hyper_cycle)*self.hyper_cycle
-            switch_time.append([id, tmp])
-        logger.info(f"Calculating switching time: {switch_time}")
+        
+        for _id, time in mode_switch:
+            switch_time.append([_id, time+10])
         return switch_time
 
     def check_app_switch(self, network_clock):
@@ -59,6 +36,7 @@ class SynchSwitch:
         :param self: Description
         :param network_clock: Description
         """
+        logger.info(f"Mode switch triggered at {network_clock}")
         next_mode = self.modes.get(self.next_app_mode[0])
 
         for _id, stream in self.streams.items():

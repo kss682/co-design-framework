@@ -1,11 +1,9 @@
-import logging
+from loguru import logger
 from models.stream import Packet
 from simpn.reporters import Reporter
 from collections import defaultdict
 from reporter.delivery_constraints import PacketDeliveryConstraints
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 class TimesReporter(Reporter):
 
@@ -87,7 +85,8 @@ class TimesReporter(Reporter):
             sep,
             *(fmt(r) for r in rows)
         ]
-        print("\n".join(table))
+        table = "\n".join(table)
+        logger.info("\n{}", table)
 
 
     def validate_throuput(self):
@@ -130,5 +129,5 @@ class TimesReporter(Reporter):
 
             min_packets = self.delivery_constraints.get((mode_id, stream_id)).min_packets
             window_size = self.delivery_constraints.get((mode_id, stream_id)).window_size
-            
-            logger.info(f"Delivery constraint of {min_packets}/{window_size} for {mode_seq} with {stream_id} is {status}")
+
+            logger.info(f"Delivery constraint of {min_packets}/{window_size} (min_packet/window) for mode {mode_seq} with stream {stream_id} is {status}")

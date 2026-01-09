@@ -1,25 +1,27 @@
 import argparse
 import json
-import logging
 import random
 from collections import defaultdict
 from collections import deque
 
+from loguru import logger
 from models.node import Node
 from models.links import Link
 from models.stream import Stream, Packet, Timer
 from models.mode import Mode
 from switch_module.synchronized_switch import SynchSwitch
+from switch_module.delayed_switch import DelayedSwitch
 from reporter.time_reporter import TimesReporter
 from reporter.delivery_constraints import PacketDeliveryConstraints
 from simpn.simulator import SimProblem, SimToken
 from simpn.visualisation import Visualisation
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
 
 SWITCH_STRATEGY = [
-    SynchSwitch
+    SynchSwitch,
+    DelayedSwitch
 ]
 
 
@@ -64,7 +66,7 @@ def load_network(data: dict):
                 _type=node.get('type')
             )
 
-    logger.info(" %s nodes found in the network", len(nodes))
+    logger.info(f"{len(nodes)} nodes found in the network", len(nodes))
 
     for lnk in data.get('links'):
         links.append(
@@ -74,7 +76,7 @@ def load_network(data: dict):
             )
         )
 
-    logger.info(" %s links found in the network", len(links))
+    logger.info(f"{len(links)} links found in the network")
 
     for stm in data.get('streams'):
         streams[stm.get("id")] = Stream(
@@ -86,7 +88,7 @@ def load_network(data: dict):
                 period=stm.get("period"),
                 deadline=stm.get("deadline")
             )
-    logger.info(" %s streams found in the network", len(streams))
+    logger.info(f" {len(streams)} streams found in the network")
 
     for mode_id in data.get("modes").keys():
         mode = data.get("modes")[mode_id]
@@ -97,7 +99,7 @@ def load_network(data: dict):
              _streams=mode.get("streams"),
              _schedule=mode.get("schedule_id")
             )
-    logger.info(" %s modes found in the network", len(modes))
+    logger.info(f"{len(modes)} modes found in the network", len(modes))
     
     schedules = data.get("schedules")
     mode_switch = data.get("mode_switch")
@@ -221,18 +223,19 @@ def build_petri_net(
 
     for _id, stream in streams.items():
         src_node = stream.src
-        places[src_node._id]["mode"] = network.add_var("p_"+str(src_node._id)+"_mode")
-        places[src_node._id]["packet"] = network.add_var("p_"+str(src_node._id)+"_packet")
-        places[src_node._id]["stream"] = network.add_var("p_"+str(src_node._id) + "_stream")
-        places[src_node._id]["node"] = network.add_var("p_"+str(src_node._id)+"_es")
-        event_name = "t_generate_"+str(stream._id)
-        network.add_event(
-            [places[src_node._id]["mode"], places[src_node._id]["packet"], places[src_node._id]["stream"]],
-            [places[src_node._id]["mode"], places[src_node._id]["packet"], places[src_node._id]["stream"],places[src_node._id]["node"]],
-            generate_packet_function(modes),
-            name=event_name
-        )
-        generate_events.append(event_name)
+        if places.get(src_node._id, None) is None:
+            places[src_node._id]["mode"] = network.add_var("p_"+str(src_node._id)+"_mode")
+            places[src_node._id]["packet"] = network.add_var("p_"+str(src_node._id)+"_packet")
+            places[src_node._id]["stream"] = network.add_var("p_"+str(src_node._id) + "_stream")
+            places[src_node._id]["node"] = network.add_var("p_"+str(src_node._id)+"_es")
+            event_name = "t_generate_"+str(stream._id)
+            network.add_event(
+                [places[src_node._id]["mode"], places[src_node._id]["packet"], places[src_node._id]["stream"]],
+                [places[src_node._id]["mode"], places[src_node._id]["packet"], places[src_node._id]["stream"],places[src_node._id]["node"]],
+                generate_packet_function(modes),
+                name=event_name
+            )
+            generate_events.append(event_name)
         
         dst_node = stream.dst
         if places.get(dst_node._id, None) is None:
@@ -310,6 +313,9 @@ def run_simulation(nodes,
     # Init current mode
     current_mode_id, time = mode_switch.popleft()
     mode = modes.get(current_mode_id)
+
+    # import pdb
+    # breakpoint()
     for st in mode.streams:
         places[st]["mode"].put(mode)
         places[st]["packet"].put(Packet(seq_id=1, stream_id=st, packet_time=0, mode_seq=str(current_mode_id)+"@" + str(time)))
@@ -333,9 +339,11 @@ def run_simulation(nodes,
 
     while network.clock <= 500 and active_model:
         bindings = network.bindings()
-        if sync_switch.check_switch(network_clock=network.clock):
-            logger.info("Mode switch triggered at %s", network.clock)
-            sync_switch.switch(network_clock=network.clock)
+        if sync_switch.check_app_switch(network_clock=network.clock):
+            sync_switch.app_switch(network_clock=network.clock)
+            bindings = network.bindings()
+        if sync_switch.check_net_switch(network_clock=network.clock):
+            sync_switch.net_switch(network_clock=network.clock)
             bindings = network.bindings()
             
         
@@ -347,7 +355,7 @@ def run_simulation(nodes,
                 reporter.callback(timed_binding)
         else:
             active_model = False
-
+    Visualisation(network).show()
     return reporter    
 
 def main():
@@ -387,12 +395,13 @@ def main():
             streams=streams,
             modes=modes,
             sched=sched,
-            mode_switch=mode_switch,
+            mode_switch=mode_switch.copy(),
             switch_class=switch_class,
             link_delays=link_delays,
             precondition_rate=precondition_rate,
             delivery_constraints=delivery_constraints
         )
+        logger.info(f"report for {switch_class.name}")
         reporter.e2e_validate()
         reporter.validate_throuput()
 
