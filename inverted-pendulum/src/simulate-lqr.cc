@@ -1,0 +1,260 @@
+#include "event.h"
+#include "inverted_pendulum.h"
+#include "lqr.h"
+#include <boost/tokenizer.hpp>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <map>
+#include <string.h>
+#include <unistd.h>
+
+// Mass of pendulum [kg]
+#define PARAM_m 0.2
+// Mass of cart [kg]
+#define PARAM_M 0.5
+// Moment of Inertia [kg*m^2]
+#define PARAM_I 0.006
+// Length of pendulum to center of mass [m]
+#define PARAM_l 0.3
+// Initial angle of pendulum [rad]
+#define PARAM_angle 0.0
+// Initial speed of cart [m/s]
+#define PARAM_v 0.0
+// Initial position of cart [m]
+#define PARAM_x 5.0
+
+// Duration of a simulation step [s]
+#define PARAM_DT 0.0001
+
+// LQR gain matrix
+#define LQR_K                                                                                                          \
+    {                                                                                                                  \
+        -1.0000000000001679, -2.7126628569811633, 42.94618303488281, 5.411763498735041                                 \
+    }
+
+#define MAX_STR_LEN 1024
+
+#define TOKEN_PLANT_SEND "plantsend"
+#define TOKEN_PLANT_RECEIVE "plantreceive"
+#define TOKEN_CONTROLLER_RECEIVE "controllerreceive"
+
+char path_in[MAX_STR_LEN];
+char path_out[MAX_STR_LEN];
+
+typedef std::list<Event> event_queue_t;
+event_queue_t event_queue;
+
+std::map<unsigned int, pendulum_state_t> pkt_to_state;
+std::map<unsigned int, double> pkt_to_update;
+/**
+ * Parse command line arguments as passed to main() and store them in
+ * global variables.
+ */
+int parse_cmdline_args(int argc, char *argv[])
+{
+    int opt;
+
+    memset(path_in, 0, MAX_STR_LEN);
+    memset(path_out, 0, MAX_STR_LEN);
+
+    while ((opt = getopt(argc, argv, "f:o:")) != -1)
+    {
+        switch (opt)
+        {
+        case 'f':
+            strncpy(path_in, optarg, MAX_STR_LEN - 1);
+            break;
+        case 'o':
+            strncpy(path_out, optarg, MAX_STR_LEN - 1);
+            break;
+        case ':':
+        case '?':
+        default:
+            return -1;
+        }
+    }
+
+    if ((strlen(path_in) == 0) || (strlen(path_out) == 0))
+        return -1;
+
+    return 0;
+}
+
+void usage(const char *prog)
+{
+    std::cerr << "Usage:" << prog << std::endl;
+    std::cerr << "-f: PACKET_TRACE_INPUT_FILE" << std::endl;
+    std::cerr << "-o: PENDULUM_STATE_OUTPUT_FILE" << std::endl;
+}
+
+bool print_states_csv(const char *path, const state_sequence_t &states)
+{
+    std::ofstream ofile(path);
+
+    if (!ofile.is_open())
+    {
+        perror("Could not open output file");
+        return false;
+    }
+    ofile << "# t,x,v,phi,omega" << std::endl;
+    for (const time_state_t &ts : states)
+    {
+        ofile << ts.first << "," << ts.second[0] << "," << ts.second[1] << "," << ts.second[2] << "," << ts.second[3]
+              << std::endl;
+    }
+
+    return true;
+}
+
+bool read_trace(const char *path, event_queue_t &event_queue)
+{
+    std::ifstream infile(path);
+
+    if (!infile.is_open())
+    {
+        perror("Could not open trace file");
+        return -1;
+    }
+
+    std::string line;
+    while (std::getline(infile, line))
+    {
+        // Ignore empty lines with no characters
+        if (line.empty())
+            continue;
+        // Ignore lines starting with #
+        if (line.rfind("#", 0) == 0)
+            continue;
+        boost::char_separator<char> sep(",");
+        boost::tokenizer<boost::char_separator<char>> tokens(line, sep);
+        unsigned int token_cnt = 0;
+        unsigned int column = 0;
+        double t;
+        unsigned int packetid;
+        event_type type;
+        for (const auto &token : tokens)
+        {
+            switch (column)
+            {
+            case 0:
+                t = strtod(token.c_str(), NULL);
+                break;
+            case 1:
+                if (token.compare(TOKEN_PLANT_SEND) == 0)
+                {
+                    type = event_plant_send;
+                }
+                else if (token.compare(TOKEN_PLANT_RECEIVE) == 0)
+                {
+                    type = event_plant_receive;
+                }
+                else if (token.compare(TOKEN_CONTROLLER_RECEIVE) == 0)
+                {
+                    type = event_controller_receive;
+                }
+                else
+                {
+                    std::cerr << "Unknown event type: " << token << std::endl;
+                    return false;
+                }
+                break;
+            case 2:
+                packetid = strtol(token.c_str(), NULL, 10);
+                break;
+            default:
+                std::cerr << "Too many tokens in line: " << line << std::endl;
+                return false;
+            }
+            column++;
+            token_cnt++;
+        }
+
+        if (token_cnt < 3)
+        {
+            std::cerr << "Too few tokens" << std::endl;
+            return false;
+        }
+
+        event_queue.push_back(Event(type, t, packetid));
+    }
+
+    return true;
+}
+
+int main(int argc, char *argv[])
+{
+    if (parse_cmdline_args(argc, argv) == -1)
+    {
+        usage(argv[0]);
+        exit(1);
+    }
+
+    if (!read_trace(path_in, event_queue))
+    {
+        exit(1);
+    }
+
+    /*
+     * Initial pendulum state vector:
+     *
+     * [  x  ]
+     * [  v  ]
+     * [ phi ]
+     * [omega]
+     */
+    pendulum_state_t state_initial = {PARAM_x, PARAM_v, PARAM_angle, 0.0};
+    InvertedPendulum pendulum = InvertedPendulum(PARAM_m, PARAM_M, PARAM_I, PARAM_l, 0.0, state_initial);
+    state_sequence_t states;
+
+    LQRegulator lqr(LQR_K);
+
+    while (!event_queue.empty())
+    {
+        Event e = *event_queue.begin();
+        event_queue.pop_front();
+
+        // Execute simulation until time of next event.
+        double dsim = e.time - pendulum.get_time();
+        if (dsim > 0.0)
+            pendulum.simulate(dsim, PARAM_DT, states);
+
+        // Execute event.
+        pendulum_state_t state;
+        double u;
+        switch (e.type)
+        {
+        case event_plant_send:
+            pkt_to_state[e.packetid] = pendulum.get_state();
+            break;
+        case event_controller_receive:
+            if (pkt_to_state.find(e.packetid) == pkt_to_state.end())
+            {
+                std::cout << e.packetid << " " << e.type << std::endl;
+                std::cerr << "Missing state" << std::endl;
+                exit(1);
+            }
+            state = pkt_to_state[e.packetid];
+            u = lqr.control(state);
+            pkt_to_update[e.packetid] = u;
+            break;
+        case event_plant_receive:
+            if (pkt_to_update.find(e.packetid) == pkt_to_update.end())
+            {
+                std::cerr << "Missing update for packet id " << e.packetid << std::endl;
+                exit(1);
+            }
+            u = pkt_to_update[e.packetid];
+            pendulum.set_force(u);
+            break;
+        }
+    }
+
+    if (!print_states_csv(path_out, states))
+    {
+        std::cerr << "Could not write states to file" << std::endl;
+        exit(1);
+    }
+
+    return 0;
+}
