@@ -24,8 +24,8 @@ class SynchSwitch:
         self.next_net_mode = self.net_mode_switch.popleft() if len(self.net_mode_switch) > 0 else None
 
     def _calculate_hypercycle(self):
-        periods = [v.period for key, v in self.streams.items()]
-        return math.lcm(*periods)
+        periods = [int(v.period*1000) for key, v in self.streams.items() if v.triggered_by is None]
+        return math.lcm(*periods)/1000
     
     def _calculate_switchingtime(self, mode_switch):
         """

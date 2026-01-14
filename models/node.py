@@ -17,3 +17,9 @@ class Node:
         self._id = _id
         self._type = _type
         self.last_packet_seen = defaultdict(dict)
+
+
+    def __repr__(self):
+        return f""""Node
+            (_id={self._id}, _type={self._type})
+        """

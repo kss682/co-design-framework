@@ -1,85 +1,99 @@
 {
     "nodes": [
         {
-            "id": 1,
+            "id": 100,
             "type": "ES"
+        },
+        {
+            "id": 101,
+            "type": "ES"
+        },
+        {
+            "id": 102,
+            "type": "ES"
+        },
+        {
+            "id": 1,
+            "type": "NN"
         },
         {
             "id": 2,
-            "type": "ES"
-        },
-        {
-            "id": 3,
             "type": "NN"
         }
     ],
 
     "links": [
         {
-            "src": 1,
-            "dst": 3
+            "src": 100,
+            "dst": 1
         },
         {
-            "src": 3,
+            "src": 1,
+            "dst": 101
+        },
+        {
+            "src": 101,
             "dst": 2
+        },
+        {
+            "src": 2,
+            "dst": 102
         }
     ],
 
     "streams": [
         {
             "id": 1,
-            "src": 1,
-            "dst": 2,
-            "type": "be",
+            "src": 100,
+            "dst": 101,
+            "type": "tt",
             "release_time": 0,
-            "period": 20,
-            "deadline": 20
+            "period": 0.02,
+            "deadline": 0.02
         },
         {
             "id": 2,
-            "src": 1,
-            "dst": 2,
+            "src": 101,
+            "dst": 102,
             "type": "tt",
             "release_time": 0,
-            "period": 5,
-            "deadline": 5
+            "triggered_by": 1,
+            "deadline": 0.02
         }
     ],
 
     "modes": {
         "1": { "name": "s", "streams": [1], "schedule_id": 1 },
-        "2": { "name": "f", "streams": [1, 2], "schedule_id": 2 }
+        "2": { "name": "f", "streams": [1], "schedule_id": 2 }
     },
 
     "schedules": {
         "1": [
-            {"prob": 0.99, "delay": 10 },
-            {"prob": 0.01, "delay": 11 }
+            {"prob": 0.99, "delay": 0.0010 },
+            {"prob": 0.01, "delay": 0.0010 }
         ],
         "2": [
-            { "prob": 0.99, "delay": 4 },
-            { "prob": 0.01, "delay": 5 }
+            { "prob": 0.99, "delay": 0.008 },
+            { "prob": 0.01, "delay": 0.009 }
         ]
     },
 
     "mode_switch":[
-        [1, 0],
-        [2, 100],
-        [1, 200]
+        [1, 0]
     ],
 
     "link_delay": [
-        { "prob": 0.95, "delay": 0.5},
-        { "prob": 0.05, "delay": 2}
+        { "prob": 0.95, "delay": 0.0008},
+        { "prob": 0.05, "delay": 0.0008}
     ],
 
     "preconditions": {
         "network_nodes": {
             "1": {
-                "rate": 0.5
+                "rate": 0.01
             },
             "2": {
-                "rate": 0.5
+                "rate": 0.01
             }
         }
     },
@@ -91,14 +105,8 @@
             "min_packets": 2,
             "window_size": 3
         },
-        {
-            "mode_id": 2,
-            "stream_id": 1,
-            "min_packets": 1,
-            "window_size": 3
-        },
-        {
-            "mode_id": 2,
+                {
+            "mode_id": 1,
             "stream_id": 2,
             "min_packets": 2,
             "window_size": 3

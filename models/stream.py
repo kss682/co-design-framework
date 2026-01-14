@@ -3,6 +3,7 @@
 """
 from dataclasses import dataclass
 from models.node import Node
+from typing import Optional
 
 @dataclass
 class Stream:
@@ -13,9 +14,10 @@ class Stream:
     src: Node
     dst: Node
     traffic_type:str
-    release_time: int
-    period: int
-    deadline: int
+    release_time: Optional[int]
+    period: Optional[int]
+    deadline: Optional[int]
+    triggered_by: Optional[int]
     # birthtime: int
 
     # def reset_birthtime(self):
