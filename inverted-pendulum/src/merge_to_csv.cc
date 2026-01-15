@@ -2,9 +2,9 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <sstream>
 #include <string.h>
 #include <unistd.h>
-
 #include "event.h"
 
 #define MAX_STR_LEN 1024
@@ -13,6 +13,9 @@
 #define TOKEN_PLANT_RECEIVE "plantreceive"
 #define TOKEN_CONTROLLER_RECEIVE "controllerreceive"
 
+#define MODE_STATIONARY "stationary"
+#define MODE_MOVING "moving"
+
 char path_plantsend[MAX_STR_LEN];
 char path_plantreceive[MAX_STR_LEN];
 char path_controllerreceive[MAX_STR_LEN];
@@ -20,6 +23,18 @@ char path_out[MAX_STR_LEN];
 
 typedef std::list<Event> event_queue_t;
 event_queue_t event_queue;
+
+std::vector<std::string> split(std::string& line, char delimiter){
+    std::vector<std::string> fields;
+    std::string token;
+
+    std::stringstream ss(line);
+    while (std::getline(ss, token, delimiter)) {
+        fields.push_back(token);
+    }
+    return fields;
+
+}
 
 int parse_cmdline_args(int argc, char *argv[])
 {
@@ -77,9 +92,16 @@ bool read_trace(const char *path, event_queue_t &event_queue, event_type type)
         // Ignore empty lines with no characters
         if (line.empty())
             continue;
+        
+        std::vector<std::string> fields = split(line, ',');
+        if(fields.size() > 2){
+            std::cerr << "Wrong format in input csv " << path << std::endl;
+        }
 
-        double d = strtod(line.c_str(), NULL);
-        Event e(type, d, packetid);
+        int mode = std::stoi(fields[0]);
+        double d = strtod(fields[1].c_str(), NULL);
+
+        Event e(type, d, packetid, static_cast<mode_type>(mode));
         event_queue.push_back(e);
         packetid++;
     }
@@ -96,7 +118,7 @@ bool print_trace_csv(const char *path, const event_queue_t &event_queue)
         perror("Could not open output file");
         return false;
     }
-    ofile << "# t,event_type,packet_id" << std::endl;
+    ofile << "# t,event_type,mode_type,packet_id" << std::endl;
     for (const Event &e : event_queue)
     {
         ofile << e.time << ",";
@@ -111,6 +133,12 @@ bool print_trace_csv(const char *path, const event_queue_t &event_queue)
         case event_controller_receive:
             ofile << TOKEN_CONTROLLER_RECEIVE << ",";
             break;
+        }
+        switch (e.mode){
+            case stationary:
+                ofile << MODE_STATIONARY << ",";
+            case moving:
+                ofile << MODE_MOVING << ",";
         }
         ofile << e.packetid << std::endl;
     }

@@ -48,8 +48,8 @@
             "dst": 101,
             "type": "tt",
             "release_time": 0,
-            "period": 0.02,
-            "deadline": 0.02
+            "period": 0.03,
+            "deadline": 0.03
         },
         {
             "id": 2,
@@ -58,28 +58,47 @@
             "type": "tt",
             "release_time": 0,
             "triggered_by": 1,
+            "deadline": 0.03
+        },
+        {
+            "id": 3,
+            "src": 100,
+            "dst": 101,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.02,
+            "deadline": 0.02
+        },
+        {
+            "id": 4,
+            "src": 101,
+            "dst": 102,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 3,
             "deadline": 0.02
         }
     ],
 
     "modes": {
-        "1": { "name": "s", "streams": [1], "schedule_id": 1 },
-        "2": { "name": "f", "streams": [1], "schedule_id": 2 }
+        "0": { "name": "s", "streams": [1], "schedule_id": 0 },
+        "1": { "name": "f", "streams": [3], "schedule_id": 1 }
     },
 
     "schedules": {
-        "1": [
-            {"prob": 0.99, "delay": 0.0010 },
-            {"prob": 0.01, "delay": 0.0010 }
+        "0": [
+            {"prob": 0.99, "delay": 0.020 },
+            {"prob": 0.01, "delay": 0.020 }
         ],
-        "2": [
-            { "prob": 0.99, "delay": 0.008 },
-            { "prob": 0.01, "delay": 0.009 }
+        "1": [
+            { "prob": 0.99, "delay": 0.010 },
+            { "prob": 0.01, "delay": 0.010 }
         ]
     },
 
     "mode_switch":[
-        [1, 0]
+        [0, 0],
+        [1, 10]
     ],
 
     "link_delay": [
@@ -94,20 +113,38 @@
             },
             "2": {
                 "rate": 0.01
+            },
+            "3": {
+                "rate": 0.01
+            },
+            "4": {
+                "rate": 0.01
             }
         }
     },
 
     "delivery_constraints": [
         {
-            "mode_id": 1,
+            "mode_id": 0,
             "stream_id": 1,
+            "min_packets": 1,
+            "window_size": 3
+        },
+        {
+            "mode_id": 0,
+            "stream_id": 2,
+            "min_packets": 1,
+            "window_size": 3
+        },
+        {
+            "mode_id": 1,
+            "stream_id": 3,
             "min_packets": 2,
             "window_size": 3
         },
-                {
+        {
             "mode_id": 1,
-            "stream_id": 2,
+            "stream_id": 4,
             "min_packets": 2,
             "window_size": 3
         }

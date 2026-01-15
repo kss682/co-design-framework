@@ -13,13 +13,13 @@ class Node:
     their properties. They nodes are modelled as 
     """
 
-    def __init__(self, _id: int, _type: str):
-        self._id = _id
-        self._type = _type
+    def __init__(self, node_id: int, node_type: str):
+        self.node_id = node_id
+        self.node_type = node_type
         self.last_packet_seen = defaultdict(dict)
 
 
     def __repr__(self):
         return f""""Node
-            (_id={self._id}, _type={self._type})
+            (_id={self.node_id}, _type={self.node_type})
         """

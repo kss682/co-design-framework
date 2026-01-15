@@ -36,13 +36,14 @@ class DelayedSwitch:
         :param self: Description
         :param network_clock: Description
         """
-        logger.info(f"Mode switch triggered at {network_clock}")
+        logger.info(f"app switch triggered at {network_clock}")
         next_mode = self.modes.get(self.next_app_mode[0])
 
         for _id, stream in self.streams.items():
-            self.places[stream.src._id]["mode"].marking.clear()
-            self.places[stream.src._id]["stream"].marking.clear()
-            self.places[stream.src._id]["packet"].marking.clear()
+            if stream.triggered_by is None:
+                self.places[stream.src._id]["mode"].marking.clear()
+                self.places[stream.src._id]["stream"].marking.clear()
+                self.places[stream.src._id]["packet"].marking.clear()
             # import pdb
             # breakpoint()
         

@@ -8,14 +8,21 @@ enum event_type
     event_controller_receive
 };
 
+enum mode_type
+{
+    stationary,
+    moving,
+};
+
 class Event
 {
   public:
     event_type type;
     double time;
     unsigned int packetid;
+    mode_type mode;
 
-    Event(event_type type, double t, unsigned int packetid);
+    Event(event_type type, double t, unsigned int packetid, mode_type mode);
 };
 
 #endif
