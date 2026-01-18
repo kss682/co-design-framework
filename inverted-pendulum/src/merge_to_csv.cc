@@ -97,7 +97,8 @@ bool read_trace(const char *path, event_queue_t &event_queue, event_type type)
         if(fields.size() > 2){
             std::cerr << "Wrong format in input csv " << path << std::endl;
         }
-
+        
+        std::cout << fields[0] << " " << fields[1] << std::endl;
         int mode = std::stoi(fields[0]);
         double d = strtod(fields[1].c_str(), NULL);
 

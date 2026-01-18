@@ -133,6 +133,7 @@ bool read_trace(const char *path, event_queue_t &event_queue)
         double t;
         unsigned int packetid;
         event_type type;
+        mode_type mode;
         for (const auto &token : tokens)
         {
             switch (column)
@@ -159,6 +160,8 @@ bool read_trace(const char *path, event_queue_t &event_queue)
                     return false;
                 }
                 break;
+            case 2:
+                mode = 
             case 2:
                 packetid = strtol(token.c_str(), NULL, 10);
                 break;
