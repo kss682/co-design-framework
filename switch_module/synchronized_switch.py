@@ -4,6 +4,8 @@ from loguru import logger
 from models.stream import Packet
 from simpn.simulator import SimToken
 
+STREAM_PLACE = "STREAM_PLACE"
+NETWORK_PLACE = "NETWORK_PLACE"
 class SynchSwitch:
     """
     Docstring for SynchSwitch
@@ -37,19 +39,25 @@ class SynchSwitch:
         """
         switch_time = deque()
 
-        for id, time in mode_switch:
+        for mode_id, time in mode_switch:
             if time%self.hyper_cycle == 0:
                 tmp = math.ceil((time+1)/self.hyper_cycle)*self.hyper_cycle
             else:
                 tmp = math.ceil(time/self.hyper_cycle)*self.hyper_cycle
-            switch_time.append([id, tmp])
+            switch_time.append([mode_id, tmp])
         logger.info(f"Calculating switching time: {switch_time}")
         return switch_time
 
     def check_app_switch(self, network_clock):
+        """
+            method checks if the application is ready to switch to next mode
+        """
         return self.next_app_mode is not None and self.next_app_mode[1] <= network_clock
 
     def check_net_switch(self, network_clock):
+        """
+            method checks if the network is ready to switch to next mode
+        """
         return self.next_net_mode is not None and self.next_net_mode[1] <= network_clock
     
     def app_switch(self, network_clock):
@@ -59,29 +67,31 @@ class SynchSwitch:
         :param self: Description
         :param network_clock: Description
         """
+        logger.info(f"app reconfig triggered at {network_clock}")
         next_mode = self.modes.get(self.next_app_mode[0])
 
-        for _id, stream in self.streams.items():
-            self.places[stream.src._id]["mode"].marking.clear()
-            self.places[stream.src._id]["stream"].marking.clear()
-            self.places[stream.src._id]["packet"].marking.clear()
-            # import pdb
-            # breakpoint()
-        
-        for _id, stream in self.streams.items():
-            if _id in next_mode.streams:
-                self.places[stream.src._id]["mode"].add_token(SimToken(next_mode, time=network_clock))
-                self.places[stream.src._id]["packet"].add_token(
-                       SimToken(Packet(
+        for stream_id, stream in self.streams.items():
+            if stream.triggered_by is None:
+                self.places[STREAM_PLACE][stream_id].mode.marking.clear()
+                self.places[STREAM_PLACE][stream_id].stream.marking.clear()
+                self.places[STREAM_PLACE][stream_id].packet.marking.clear()
+
+        for stream_id, stream in self.streams.items():
+            if stream_id in next_mode.streams:
+                self.places[STREAM_PLACE][stream_id].mode.add_token(SimToken(next_mode, time=network_clock))
+                self.places[STREAM_PLACE][stream_id].packet.add_token(
+                    SimToken(
+                        Packet(
                             seq_id=1,
-                            stream_id=stream._id,
+                            stream_id=stream.stream_id,
                             packet_time=0,
-                            mode_seq=str(next_mode._id)+"@"+str(network_clock)
-                        ),
-                            time=network_clock
+                            mode_seq=str(next_mode.mode_id)+"@"+str(network_clock)
+                        ), 
+                        time=network_clock
                         )
-                    )
-                self.places[stream.src._id]["stream"].add_token(SimToken(stream, time=network_clock))
+                )
+                self.places[STREAM_PLACE][stream_id].stream.add_token(SimToken(stream, time=network_clock))
+
 
         self.next_app_mode = self.app_mode_switch.popleft() if len(self.app_mode_switch) > 0 else None
 
@@ -90,10 +100,10 @@ class SynchSwitch:
         next_mode = self.modes.get(self.next_net_mode[0])
 
         logger.info(f"network reconfig triggered at {network_clock}")
-        for _id, node in self.nodes.items():
-            if node._type == "NN":
-                self.places[_id]["mode"].marking.clear()
-                self.places[_id]["mode"].add_token(SimToken(next_mode, time=network_clock))
-                self.places[_id]["packet_last_seen"].clear()
+        for node_id, node in self.nodes.items():
+            if node.node_type == "NN":
+                self.places[NETWORK_PLACE][node_id].mode.marking.clear()
+                self.places[NETWORK_PLACE][node_id].mode.add_token(SimToken(next_mode, time=network_clock))
+                # self.places[_id]["packet_last_seen"].clear()
 
         self.next_net_mode = self.net_mode_switch.popleft() if len(self.net_mode_switch) > 0 else None

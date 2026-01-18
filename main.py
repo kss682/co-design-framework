@@ -8,6 +8,7 @@ from loguru import logger
 from models.node import Node
 from models.links import Link
 from models.stream import Stream, Packet, Timer
+from models.place import StreamPlace, NetworkPlace
 from models.mode import Mode
 from switch_module.synchronized_switch import SynchSwitch
 from switch_module.delayed_switch import DelayedSwitch
@@ -16,11 +17,13 @@ from reporter.delivery_constraints import PacketDeliveryConstraints
 from simpn.simulator import SimProblem, SimToken
 from simpn.visualisation import Visualisation
 
-# logger = logging.getLogger(__name__)
-# logging.basicConfig(level=logging.INFO)
+
+STREAM_PLACE = "STREAM_PLACE"
+NETWORK_PLACE = "NETWORK_PLACE"
 
 SWITCH_STRATEGY = [
     SynchSwitch
+    # DelayedSwitch
 ]
 
 
@@ -41,7 +44,7 @@ def load_data(filename:str):
         logger.error("failed to load network model from %s due to %s", filename, e)
         return None
 
-
+## Modularize this function to make it testable
 def load_network(data: dict):
     """
     Docstring for load_network
@@ -61,8 +64,8 @@ def load_network(data: dict):
 
     for node in data.get("nodes"):
         nodes[node.get("id")] = Node(
-                _id=node.get('id'),
-                _type=node.get('type')
+                node_id=node.get('id'),
+                node_type=node.get('type')
             )
 
     logger.info(f"{len(nodes)} nodes found in the network", len(nodes))
@@ -79,7 +82,7 @@ def load_network(data: dict):
 
     for stm in data.get('streams'):
         streams[stm.get("id")] = Stream(
-                _id=stm.get("id"),
+                stream_id=stm.get("id"),
                 src=nodes.get(stm.get("src")),
                 dst=nodes.get(stm.get("dst")),
                 traffic_type=stm.get("type"),
@@ -94,28 +97,28 @@ def load_network(data: dict):
         mode = data.get("modes")[mode_id]
         logger.info("%s", mode)
         modes[int(mode_id)] = Mode(
-             _id=int(mode_id),
-             _name=mode.get("name"),
-             _streams=mode.get("streams"),
-             _schedule=mode.get("schedule_id")
+             mode_id=int(mode_id),
+             name=mode.get("name"),
+             streams=mode.get("streams"),
+             schedule=mode.get("schedule_id")
             )
     logger.info(f"{len(modes)} modes found in the network", len(modes))
-    
+
     schedules = data.get("schedules")
     mode_switch = data.get("mode_switch")
-    
+
     link_delays = data.get("link_delay", {})
     pre_condition_rate = data.get("preconditions", {}).get("network_nodes")
 
     delivery_constraints = {}
     for constranint in data.get("delivery_constraints", []):
         delivery_constraints[(constranint.get("mode_id"), constranint.get("stream_id"))] = PacketDeliveryConstraints(**constranint)
-        
-    return (nodes, 
-            links, 
-            streams, 
-            modes, 
-            schedules, 
+
+    return (nodes,
+            links,
+            streams,
+            modes,
+            schedules,
             deque(mode_switch),
             link_delays,
             pre_condition_rate,
@@ -135,14 +138,14 @@ def close_pgm():
 
 
 def generate_packet_function(mode_dict):
+    """
+    """
     def timer_function(mode, packet, stream):
 
-        if mode_dict.get(mode._id, None) is not None and stream._id in mode_dict.get(mode._id).streams:
-                # current_birthtime = stream.birthtime
-                # stream.reset_birthtime()
+        if mode_dict.get(mode.mode_id, None) is not None and stream.stream_id in mode_dict.get(mode.mode_id).streams:
             return [        
                 SimToken(mode, delay=stream.period),
-                SimToken(Packet(seq_id=packet.seq_id+1, stream_id=stream._id, packet_time=0, mode_seq=packet.mode_seq), delay=stream.period),
+                SimToken(Packet(seq_id=packet.seq_id+1, stream_id=stream.stream_id, packet_time=0, mode_seq=packet.mode_seq), delay=stream.period),
                 SimToken(stream, delay=stream.period),
                 SimToken(packet)
             ]
@@ -155,30 +158,33 @@ def generate_packet_function(mode_dict):
     return timer_function
 
 def generate_packet_function_tw(stream):
+    """
+
+    """
     def timer_function(packet):
         return [
-            SimToken(Packet(seq_id=packet.seq_id, stream_id=stream._id, packet_time=0, mode_seq=packet.mode_seq)),
+            SimToken(Packet(seq_id=packet.seq_id, stream_id=stream.stream_id, packet_time=0, mode_seq=packet.mode_seq)),
             SimToken(packet)
         ]
     return timer_function
 
-def generate_nw_function(sched, precondition_rate, packet_last_seen):
+def generate_nw_function(sched, precondition_rate):
+    """
+        method to simulate the network delay based on the schedule guarantee from json
+    """
     def delay_function(mode, p):
         now = p.packet_time
         st_id = p.stream_id
         rand = random.random()
-        mode_id = str(mode._id)
+        mode_id = str(mode.mode_id)
 
-        expected = precondition_rate.get(str(st_id)).get("rate", None)
+        expected = precondition_rate.get(str(st_id), {}).get("rate", None)
         if expected is None:
             return [SimToken(mode), None]
 
-        # prev = packet_last_seen.get(mode_id, {}).get(st_id, None)
-        # logger.info(f"{prev}: {now}: {expected}")
         if now > expected:
             return [SimToken(mode), None]
 
-        # packet_last_seen[mode_id][st_id] = now
         # Avoid the hard coded index usage
         if rand <= sched.get(mode_id)[0]["prob"]:
             delay =  sched.get(mode_id)[0]["delay"]
@@ -197,6 +203,10 @@ def generate_nw_function(sched, precondition_rate, packet_last_seen):
 
 
 def generate_link_delay_function(link_delay):
+    """
+        method to simulate the link delay
+        data fetched from json
+    """
     def delay(packet):
         rand = random.random()
         if rand <= link_delay[0]["prob"]:
@@ -213,6 +223,16 @@ def generate_link_delay_function(link_delay):
         )]
     return delay
 
+def accept_condition(stream_id):
+    def guard(packet):
+        return packet.stream_id == stream_id
+    return guard
+
+def accept_condition_triggered(stream):
+    def guard(packet):
+        return packet.stream_id == stream.triggered_by
+    return guard
+
 
 def build_petri_net(
         network,
@@ -228,97 +248,162 @@ def build_petri_net(
     generate_events = list()
     done_events = list()
     trigger_src_nodes = {
-        st.src._id
+        st.src.node_id
         for st in streams.values()
         if st.triggered_by is not None
     }
 
-    for _id, stream in streams.items():
+    places[NETWORK_PLACE] = defaultdict(dict)
+    places[STREAM_PLACE] = defaultdict(dict)
+    for stream_id, stream in streams.items():
         src_node = stream.src
-        if places.get(src_node._id, None) is None:
-            places[src_node._id]["node"] = network.add_var("p_"+str(src_node._id)+"_es")
-        event_name = "t_generate_"+str(stream._id)
-   
-        if stream.triggered_by is None:
-            places[src_node._id]["mode"] = network.add_var("p_"+str(src_node._id)+"_mode")
-            places[src_node._id]["packet"] = network.add_var("p_"+str(src_node._id)+"_packet")
-            places[src_node._id]["stream"] = network.add_var("p_"+str(src_node._id) + "_stream")
-            network.add_event(
-                [places[src_node._id]["mode"], places[src_node._id]["packet"], places[src_node._id]["stream"]],
-                [places[src_node._id]["mode"], places[src_node._id]["packet"], places[src_node._id]["stream"], places[src_node._id]["node"]],
-                generate_packet_function(modes),
-                name=event_name
-            )
-            generate_events.append(event_name)
-        else:
-            places[src_node._id]["trigger_node"] = network.add_var("pt_"+str(src_node._id)+"_es")
-            places[src_node._id]["done"] = network.add_var("p_"+str(dst_node._id)+"_done")
-            network.add_event(
-                [places[src_node._id]["node"]],
-                [places[src_node._id]["trigger_node"], places[src_node._id]["done"]],
-                generate_packet_function_tw(stream),
-                name=event_name
-            )
-            generate_events.append(event_name)
-            done_events.append(event_name)
-
-
         dst_node = stream.dst
-        if places.get(dst_node._id, None) is None:
-            places[dst_node._id]["node"] = network.add_var("p_"+str(dst_node._id)+"_es")
-        if (
-            places[dst_node._id].get("done", None) is None and 
-            dst_node._id not in trigger_src_nodes
-        ):
-            places[dst_node._id]["done"] = network.add_var("p_"+str(dst_node._id)+"_done")
-            event_name="to_done_"+str(dst_node._id)
-            network.add_event(
-                [places[dst_node._id]["node"]],
-                [places[dst_node._id]["done"]],
-                lambda p: [SimToken(p)],
-                name=event_name
+        if places.get(NETWORK_PLACE, {}).get(src_node.node_id) is None:
+            places[NETWORK_PLACE][src_node.node_id] = NetworkPlace(
+                node=network.add_var("p_"+str(src_node.node_id)+"_es")
             )
-            done_events.append(event_name)
+
+        if places.get(NETWORK_PLACE, {}).get(dst_node.node_id) is None:
+            places[NETWORK_PLACE][dst_node.node_id] = NetworkPlace(
+                node=network.add_var("p_"+str(dst_node.node_id)+"_es")
+            )
+
+        if places.get(STREAM_PLACE, {}).get(stream_id, None) is None:
+            if stream.triggered_by is None:
+                places[STREAM_PLACE][stream_id] = StreamPlace(
+                    mode=network.add_var("p_"+str(stream_id)+"_mode"),
+                    packet=network.add_var("p_"+str(stream_id)+"_packet"),
+                    stream=network.add_var("p_"+str(stream_id) + "_stream"),
+                    done=network.add_var("p_"+str(stream_id)+"_done")
+                )
+
+                event_name = "generate_event_"+str(stream_id)
+                network.add_event(
+                    [
+                        places[STREAM_PLACE][stream_id].mode,
+                        places[STREAM_PLACE][stream_id].packet,
+                        places[STREAM_PLACE][stream_id].stream
+                    ],
+                    [
+                        places[STREAM_PLACE][stream_id].mode,
+                        places[STREAM_PLACE][stream_id].packet,
+                        places[STREAM_PLACE][stream_id].stream,
+                        places[NETWORK_PLACE][src_node.node_id].node
+                    ],
+                    behavior=generate_packet_function(modes),
+                    name=event_name
+                )
+                generate_events.append(event_name)
+
+                # What happens if multiple streams have the same end system node ?
+                if dst_node.node_id not in trigger_src_nodes:
+                    event_name = "done_event_"+str(stream_id)
+                    network.add_event(
+                        [
+                            places[NETWORK_PLACE][dst_node.node_id].node
+                        ],
+                        [
+                            places[STREAM_PLACE][stream_id].done
+                        ],
+                        behavior= lambda p: [SimToken(p)],
+                        name=event_name
+                    )
+                    done_events.append(event_name)
+            else:
+                places[STREAM_PLACE][stream_id] = StreamPlace(
+                    triggered_by=network.add_var("pt_"+str(stream_id)+"_es"),
+                    done=network.add_var("p_"+str(stream_id)+"_done")
+                )
+
+                event_name = "generate_event_"+str(stream_id)
+                network.add_event(
+                    [
+                        places[NETWORK_PLACE][src_node.node_id].node
+                    ],
+                    [
+                        places[STREAM_PLACE][stream_id].triggered_by,
+                        places[STREAM_PLACE][stream.triggered_by].done
+                    ],
+                    behavior=generate_packet_function_tw(stream),
+                    guard=accept_condition_triggered(stream),
+                    name=event_name
+                )
+                generate_events.append(event_name)
+                done_events.append(event_name)
+
+                if dst_node.node_id not in trigger_src_nodes:
+                    event_name = "done_event_"+str(stream_id)
+                    network.add_event(
+                        [
+                            places[NETWORK_PLACE][dst_node.node_id].node
+                        ],
+                        [
+                            places[STREAM_PLACE][stream_id].done
+                        ],
+                        behavior= lambda p: [SimToken(p)],
+                        guard=accept_condition(stream_id),
+                        name=event_name
+                    )
+                    done_events.append(event_name)
 
     for link in links:
         src, dest = link.src, link.dst
-        if places.get(src._id, None) is None:
-            places[src._id]["node"] = network.add_var("nn_"+str(src._id))
-            places[src._id]["mode"] = network.add_var("nn_"+str(src._id)+"_mode")
-            places[src._id]["packet_last_seen"] = defaultdict(dict)
-        if places.get(dest._id, None) is None:
-            places[dest._id]["node"] = network.add_var("nn_"+str(dest._id))
-            places[dest._id]["mode"] = network.add_var("nn_"+str(dest._id)+"_mode")
-            places[dest._id]["packet_last_seen"] = defaultdict(dict)
-
-        if src._type == "NN":
-            network.add_event(
-                [places[src._id]["mode"], places[src._id]["node"]],
-                [places[src._id]["mode"], places[dest._id]["node"]],
-                generate_nw_function(sched, precondition_rate, places[src._id]["packet_last_seen"]),
-                name = "t_NN_"+str(src._id)
+        if places.get(NETWORK_PLACE, {}).get(src.node_id) is None:
+            places[NETWORK_PLACE][src.node_id] =  NetworkPlace(
+                node=network.add_var("nn_"+str(src.node_id)),
+                mode=network.add_var("nn_"+str(src.node_id)+"_mode")
             )
+        if places.get(NETWORK_PLACE, {}).get(dest.node_id, None) is None:
+            places[NETWORK_PLACE][dest.node_id] = NetworkPlace(
+                node=network.add_var("nn_"+str(dest.node_id)),
+                mode=network.add_var("nn_"+str(dest.node_id)+"_mode")
+            )
+
+        
+        if src.node_type == "NN":
+            event_name = "t_NN_" + str(src.node_id)
+            network.add_event(
+                inflow=[
+                    places[NETWORK_PLACE][src.node_id].mode,
+                    places[NETWORK_PLACE][src.node_id].node
+                ],
+                outflow=[
+                    places[NETWORK_PLACE][src.node_id].mode,
+                    places[NETWORK_PLACE][dest.node_id].node
+                ],
+                behavior=generate_nw_function(sched, precondition_rate),
+                name = event_name
+            )
+            
         else:
-            for _id, st in streams.items():
-                if st.src._id == src._id:
-                    # logger.info(st)
-                    # import pdb
-                    # breakpoint()
-                    if st.triggered_by is not None:
+            print(src, dest)
+            for stream_id, stream in streams.items():
+                if stream.src.node_id == src.node_id:
+                    event_name = "t_es_"+str(stream_id)
+                    if stream.triggered_by is not None and streams.get(stream.triggered_by).dst.node_id == src.node_id:
                         network.add_event(
-                            [places[src._id]["trigger_node"]],
-                            [places[dest._id]["node"]],
-                            generate_link_delay_function(link_delay=link_delays),
-                            name="t_es_"+str(src._id)
+                            inflow=[
+                                places[STREAM_PLACE][stream_id].triggered_by
+                            ],
+                            outflow=[
+                                places[NETWORK_PLACE][dest.node_id].node
+                            ],
+                            behavior=generate_link_delay_function(link_delay=link_delays),
+                            name=event_name
                         )
+                        generate_events.append(event_name)
                     else:
                         network.add_event(
-                            [places[src._id]["node"]],
-                            [places[dest._id]["node"]],
-                            generate_link_delay_function(link_delay=link_delays),
-                            name="t_es_"+str(src._id)
+                            inflow=[
+                                places[NETWORK_PLACE][src.node_id].node
+                            ],
+                            outflow=[
+                                places[NETWORK_PLACE][dest.node_id].node
+                            ],
+                            behavior=generate_link_delay_function(link_delay=link_delays),
+                            name=event_name
                         )
-                # break
+
     
     return places, generate_events, done_events
 
@@ -354,29 +439,34 @@ def run_simulation(nodes,
         link_delays,
         precondition_rate
     )
+    
     # Init current mode
     current_mode_id, time = mode_switch.popleft()
     mode = modes.get(current_mode_id)
 
-    # import pdb
-    # breakpoint()
+    logger.info(f"Current mode: {current_mode_id}")
     for st in mode.streams:
-        src_id = streams.get(st).src._id
-        places[src_id]["mode"].put(mode)
-        places[src_id]["packet"].put(Packet(seq_id=1, stream_id=st, packet_time=0, mode_seq=str(current_mode_id)+"@" + str(time)))
-        places[src_id]["stream"].put(streams.get(st))
+        places[STREAM_PLACE][st].mode.put(mode)
+        places[STREAM_PLACE][st].packet.put(
+            Packet(
+                seq_id=1, stream_id=st, packet_time=0, mode_seq=str(current_mode_id)+"@" + str(time)
+            )
+        )
+        places[STREAM_PLACE][st].stream.put(
+            streams.get(st)
+        )
 
-    for key, place in places.items():
-        if nodes.get(key)._type == "NN":
-            place["mode"].put(mode)
+    for key in places[NETWORK_PLACE].keys():
+        if nodes.get(key).node_type == "NN":
+            places[NETWORK_PLACE][key].mode.put(mode)
 
     
     reporter = TimesReporter(set(generate_events), set(done_events), streams=streams, delivery_constraints=delivery_constraints)
     sync_switch = switch_class(
-        modes=modes, 
+        modes=modes,
         streams=streams,
         places=places,
-        nodes=nodes, 
+        nodes=nodes,
         mode_switch=mode_switch,
 
     )
@@ -400,7 +490,8 @@ def run_simulation(nodes,
                 reporter.callback(timed_binding)
         else:
             active_model = False
-    # Visualisation(network).show()
+    Visualisation(network).show()
+
     return reporter    
 
 def main():

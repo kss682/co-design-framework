@@ -25,15 +25,14 @@ class TimesReporter(Reporter):
 
         for bind in binding:
             token = bind[1].value
-            stream_id = int(event.get_id().split("_")[2])
+            
             if event.get_id() in self.generate_events and isinstance(token, Packet):
-
-                # print(stream_id, token.stream_id)
+                stream_id = token.stream_id
                 if (token.mode_seq, stream_id) not in self.end_to_end:
                      self.end_to_end[(token.mode_seq, stream_id)] = {}
                 self.end_to_end[(token.mode_seq, stream_id)][token.seq_id] = { "release_time": time }
 
-            # logger.info(self.end_to_end)
+
             if event.get_id() in self.done_events and isinstance(token, Packet):
                 if (token.mode_seq, token.stream_id) in self.end_to_end and token.seq_id in self.end_to_end[(token.mode_seq, token.stream_id)]:
                     self.end_to_end[(token.mode_seq, token.stream_id)][token.seq_id]["complete_time"] = time
@@ -92,7 +91,7 @@ class TimesReporter(Reporter):
             *(fmt(r) for r in rows)
         ]
         table = "\n".join(table)
-        logger.info("\n{}", table)
+        # logger.info("\n{}", table)
 
 
     def validate_throuput(self):
@@ -139,44 +138,40 @@ class TimesReporter(Reporter):
             logger.info(f"Delivery constraint of {min_packets}/{window_size} (min_packet/window) for mode {mode_seq} with stream {stream_id} is {status}")
 
 
-
-
     def write(self, output_dir="simulation_results"):
-        # Create the directory if it doesn't exist
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
         for st_id, st in self.streams.items():
-            # Define the two file paths for this specific stream
-            src_filename = os.path.join(output_dir, f"stream{st_id}_{st.src._id}_sourc.csv")
-            dst_filename = os.path.join(output_dir, f"stream{st_id}_{st.dst._id}_dest.csv")
+            src_filename = os.path.join(output_dir, f"{st.src.node_id}_sourc.csv")
+            dst_filename = os.path.join(output_dir, f"{st.dst.node_id}_dest.csv")
 
-            # 1. Write the Source (Release Time) file
-            with open(src_filename, mode='w', newline='') as src_file:
+            with open(src_filename, mode='a', newline='') as src_file:
                 writer = csv.writer(src_file)
-                writer.writerow(["release_time"])
+                # writer.writerow(["mode", "release_time"])
 
                 # Filter end_to_end for packets belonging to this stream
                 for key, packet_info in self.end_to_end.items():
                     mode_seq, stream_id = key
+                    mode_id = int(mode_seq.split('@')[0])
                     for pack_id, times in packet_info.items():
                 
                         release = times.get("release_time")
                         complete = times.get("complete_time", None)
                         if stream_id == st_id:
-                            writer.writerow([release])
+                            writer.writerow([mode_id, release])
 
-            # 2. Write the Sink (Completion Time) file
-            with open(dst_filename, mode='w', newline='') as dst_file:
+            with open(dst_filename, mode='a', newline='') as dst_file:
                 writer = csv.writer(dst_file)
-                writer.writerow(["completion_time"])
+                # writer.writerow(["mode", "completion_time"])
 
                 for key, packet_info in self.end_to_end.items():
                     mode_seq, stream_id = key
+                    mode_id = int(mode_seq.split('@')[0])
                     for pack_id, times in packet_info.items():
                 
                         release = times.get("release_time")
                         complete = times.get("complete_time", None)
                         if stream_id == st_id and complete is not None:
-                            writer.writerow([complete])
+                            writer.writerow([mode_id, complete])
         print(f"Data split successful. Files generated in '{output_dir}'")
