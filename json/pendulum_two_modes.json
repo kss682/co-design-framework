@@ -84,8 +84,8 @@
             "dst": 101,
             "type": "tt",
             "release_time": 0,
-            "period": 0.150,
-            "deadline": 0.150
+            "period": 0.030,
+            "deadline": 0.030
         },
         {
             "id": 6,
@@ -94,7 +94,7 @@
             "type": "tt",
             "release_time": 0,
             "triggered_by": 5,
-            "deadline": 0.150
+            "deadline": 0.030
         }
     ],
 
@@ -114,15 +114,15 @@
             { "prob": 0.01, "delay": 0.004 }
         ],
         "0": [
-            { "prob": 0.99, "delay": 0.139 },
-            { "prob": 0.01, "delay": 0.139 }
+            { "prob": 0.99, "delay": 0.015 },
+            { "prob": 0.01, "delay": 0.020 }
         ]
     },
 
     "mode_switch":[
-        [0, 0],
-        [1, 10],
-        [2, 20]
+        [1, 0],
+        [2, 10],
+        [0, 20]
     ],
 
     "link_delay": [

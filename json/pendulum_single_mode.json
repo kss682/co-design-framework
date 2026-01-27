@@ -1,0 +1,115 @@
+{
+    "nodes": [
+        {
+            "id": 100,
+            "type": "ES"
+        },
+        {
+            "id": 101,
+            "type": "ES"
+        },
+        {
+            "id": 102,
+            "type": "ES"
+        },
+        {
+            "id": 1,
+            "type": "NN"
+        },
+        {
+            "id": 2,
+            "type": "NN"
+        }
+    ],
+
+    "links": [
+        {
+            "src": 100,
+            "dst": 1
+        },
+        {
+            "src": 1,
+            "dst": 101
+        },
+        {
+            "src": 101,
+            "dst": 2
+        },
+        {
+            "src": 2,
+            "dst": 102
+        }
+    ],
+
+    "streams": [
+        {
+            "id": 1,
+            "src": 100,
+            "dst": 101,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.02,
+            "deadline": 0.02
+        },
+        {
+            "id": 2,
+            "src": 101,
+            "dst": 102,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 1,
+            "deadline": 0.02
+        }
+    ],
+
+    "modes": {
+        "0": { "name": "s", "streams": [1], "schedule_id": 0 },
+        "1": { "name": "f", "streams": [1], "schedule_id": 1 }
+    },
+
+    "schedules": {
+        "0": [
+            {"prob": 0.99, "delay": 0.020 },
+            {"prob": 0.01, "delay": 0.020 }
+        ],
+        "1": [
+            { "prob": 0.99, "delay": 0.010 },
+            { "prob": 0.01, "delay": 0.010 }
+        ]
+    },
+
+    "mode_switch":[
+        [0, 0]
+    ],
+
+    "link_delay": [
+        { "prob": 0.95, "delay": 0.0008},
+        { "prob": 0.05, "delay": 0.0008}
+    ],
+
+    "preconditions": {
+        "network_nodes": {
+            "1": {
+                "rate": 0.01
+            },
+            "2": {
+                "rate": 0.01
+            }
+        }
+    },
+
+    "delivery_constraints": [
+        {
+            "mode_id": 0,
+            "stream_id": 1,
+            "min_packets": 2,
+            "window_size": 3
+        },
+        {
+            "mode_id": 0,
+            "stream_id": 2,
+            "min_packets": 2,
+            "window_size": 3
+        }
+    ]    
+}

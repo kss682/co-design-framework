@@ -22,8 +22,8 @@ STREAM_PLACE = "STREAM_PLACE"
 NETWORK_PLACE = "NETWORK_PLACE"
 
 SWITCH_STRATEGY = [
-    SynchSwitch
-    # DelayedSwitch
+    # SynchSwitch,
+    DelayedSwitch
 ]
 
 
@@ -190,6 +190,7 @@ def generate_nw_function(sched, precondition_rate):
             delay =  sched.get(mode_id)[0]["delay"]
         else:
             delay = sched.get(mode_id)[1]["delay"]
+
         return [
             SimToken(mode),
             SimToken(Packet(
@@ -389,6 +390,7 @@ def build_petri_net(
                                 places[NETWORK_PLACE][dest.node_id].node
                             ],
                             behavior=generate_link_delay_function(link_delay=link_delays),
+                            guard=accept_condition(stream_id=stream_id),
                             name=event_name
                         )
                         generate_events.append(event_name)
@@ -472,7 +474,8 @@ def run_simulation(nodes,
     )
     active_model = True
 
-    while network.clock <= 20 and active_model:
+    # Visualisation(network).show()
+    while network.clock < 31 and active_model:
         bindings = network.bindings()
         if sync_switch.check_app_switch(network_clock=network.clock):
             sync_switch.app_switch(network_clock=network.clock)
@@ -490,7 +493,6 @@ def run_simulation(nodes,
                 reporter.callback(timed_binding)
         else:
             active_model = False
-    Visualisation(network).show()
 
     return reporter    
 
