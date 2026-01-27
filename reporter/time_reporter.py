@@ -26,11 +26,11 @@ class TimesReporter(Reporter):
         for bind in binding:
             token = bind[1].value
             
-            if event.get_id() in self.generate_events and isinstance(token, Packet):
+            if (event.get_id() in self.generate_events and isinstance(token, Packet) and str(token.stream_id) in event.get_id()):
                 stream_id = token.stream_id
                 if (token.mode_seq, stream_id) not in self.end_to_end:
                      self.end_to_end[(token.mode_seq, stream_id)] = {}
-                self.end_to_end[(token.mode_seq, stream_id)][token.seq_id] = { "release_time": time }
+                self.end_to_end[(token.mode_seq, stream_id)][token.seq_id] = { "release_time": time}
 
 
             if event.get_id() in self.done_events and isinstance(token, Packet):
@@ -91,7 +91,7 @@ class TimesReporter(Reporter):
             *(fmt(r) for r in rows)
         ]
         table = "\n".join(table)
-        # logger.info("\n{}", table)
+        logger.info("\n{}", table)
 
 
     def validate_throuput(self):

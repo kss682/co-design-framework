@@ -10,8 +10,9 @@ enum event_type
 
 enum mode_type
 {
-    stationary,
-    moving,
+    stationary = 0,
+    moving_1 = 1,
+    moving_2 = 2
 };
 
 class Event

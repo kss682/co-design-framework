@@ -1,93 +1,154 @@
 {
     "nodes": [
         {
+            "id": 100,
+            "type": "ES"
+        },
+        {
+            "id": 101,
+            "type": "ES"
+        },
+        {
+            "id": 102,
+            "type": "ES"
+        },
+        {
             "id": 1,
-            "type": "ES"
-        },
-        {
-            "id": 2,
-            "type": "ES"
-        },
-        {
-            "id": 3,
             "type": "NN"
         },
         {
-            "id": 4,
-            "type": "ES"
+            "id": 2,
+            "type": "NN"
         }
     ],
 
     "links": [
         {
-            "src": 1,
-            "dst": 3
+            "src": 100,
+            "dst": 1
         },
         {
-            "src": 3,
-            "dst": 4
+            "src": 1,
+            "dst": 101
+        },
+        {
+            "src": 101,
+            "dst": 2
         },
         {
             "src": 2,
-            "dst": 3
+            "dst": 102
         }
     ],
 
     "streams": [
         {
             "id": 1,
-            "src": 1,
-            "dst": 4,
-            "type": "be",
+            "src": 100,
+            "dst": 101,
+            "type": "tt",
             "release_time": 0,
-            "period": 20,
-            "deadline": 20
+            "period": 0.005,
+            "deadline": 0.005
         },
         {
             "id": 2,
-            "src": 2,
-            "dst": 4,
+            "src": 101,
+            "dst": 102,
             "type": "tt",
             "release_time": 0,
-            "period": 5,
-            "deadline": 5
+            "triggered_by": 1,
+            "deadline": 0.005
+        },
+        {
+            "id": 3,
+            "src": 100,
+            "dst": 101,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.005,
+            "deadline": 0.005
+        },
+        {
+            "id": 4,
+            "src": 101,
+            "dst": 102,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 3,
+            "deadline": 0.005
+        },
+        {
+            "id": 5,
+            "src": 100,
+            "dst": 101,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.150,
+            "deadline": 0.150
+        },
+        {
+            "id": 6,
+            "src": 101,
+            "dst": 102,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 5,
+            "deadline": 0.150
         }
     ],
 
     "modes": {
-        "1": { "name": "s", "streams": [1], "schedule_id": 1 },
-        "2": { "name": "f", "streams": [1, 2], "schedule_id": 2 }
+        "0": { "name": "stat", "streams": [5], "schedule_id": 0 },
+        "1": { "name": "moving1", "streams": [1], "schedule_id": 1 },
+        "2": { "name": "moving2", "streams": [3], "schedule_id": 2}
     },
 
     "schedules": {
-        "1": [
-            {"prob": 0.9, "delay": 10 },
-            {"prob": 0.1, "delay": 11 }
-        ],
         "2": [
-            { "prob": 0.9, "delay": 4 },
-            { "prob": 0.1, "delay": 5 }
+            {"prob": 0.99, "delay": 0.003 },
+            {"prob": 0.01, "delay": 0.004 }
+        ],
+        "1": [
+            { "prob": 0.99, "delay": 0.003 },
+            { "prob": 0.01, "delay": 0.004 }
+        ],
+        "0": [
+            { "prob": 0.99, "delay": 0.139 },
+            { "prob": 0.01, "delay": 0.139 }
         ]
     },
 
     "mode_switch":[
-        [1, 0],
-        [2, 100],
-        [1, 200]
+        [0, 0],
+        [1, 10],
+        [2, 20]
     ],
 
     "link_delay": [
-        { "prob": 0.95, "delay": 0.5},
-        { "prob": 0.05, "delay": 2}
+        { "prob": 0.95, "delay": 0.001},
+        { "prob": 0.05, "delay": 0.001}
     ],
 
     "preconditions": {
         "network_nodes": {
             "1": {
-                "rate": 0.5
+                "rate": 0.01
             },
             "2": {
-                "rate": 0.5
+                "rate": 0.01
+            },
+            "3": {
+                "rate": 0.01
+            },
+            "4": {
+                "rate": 0.01
+            },
+            "5": {
+                "rate": 0.01
+            },
+            "6": {
+                "rate": 0.01
             }
         }
     },
@@ -100,18 +161,34 @@
             "window_size": 3
         },
         {
-            "mode_id": 2,
-            "stream_id": 1,
-            "min_packets": 1,
+            "mode_id": 1,
+            "stream_id": 2,
+            "min_packets": 2,
             "window_size": 3
         },
         {
             "mode_id": 2,
-            "stream_id": 2,
+            "stream_id": 3,
             "min_packets": 2,
             "window_size": 3
+        },
+        {
+            "mode_id": 2,
+            "stream_id": 4,
+            "min_packets": 2,
+            "window_size": 3
+        },
+        {
+            "mode_id": 0,
+            "stream_id": 5,
+            "min_packets": 1,
+            "window_size": 3
+        },
+        {
+            "mode_id": 0,
+            "stream_id": 6,
+            "min_packets": 1,
+            "window_size": 3
         }
-    ]
-    
-    
+    ]    
 }

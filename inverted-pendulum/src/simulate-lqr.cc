@@ -28,16 +28,24 @@
 #define PARAM_DT 0.0001
 
 // LQR gain matrix
-#define LQR_K                                                                                                          \
-    {                                                                                                                  \
-        -1.0000000000001679, -2.7126628569811633, 42.94618303488281, 5.411763498735041                                 \
-    }
+#define LQR_K { -3.16227766, -4.78859065, 26.89617295,  3.78353879 }
+#define LQR_K_ORG {                                                                                                                  \
+         -1.0000000000001679, -2.7126628569811633, 42.94618303488281, 5.411763498735041                                 \
+}
 
 #define MAX_STR_LEN 1024
 
 #define TOKEN_PLANT_SEND "plantsend"
 #define TOKEN_PLANT_RECEIVE "plantreceive"
 #define TOKEN_CONTROLLER_RECEIVE "controllerreceive"
+
+#define MODE_STATIONARY "stationary"
+#define MODE_MOVING_1 "moving_1"
+#define MODE_MOVING_2 "moving_2"
+
+#define MODE_0 {5, 0, 0, 0}
+#define MODE_1 {0, 0, 0, 0}
+#define MODE_2 {5, 0, 0, 0}
 
 char path_in[MAX_STR_LEN];
 char path_out[MAX_STR_LEN];
@@ -161,8 +169,9 @@ bool read_trace(const char *path, event_queue_t &event_queue)
                 }
                 break;
             case 2:
-                mode = 
-            case 2:
+                mode = static_cast<mode_type> (std::stoi(token.c_str()));
+                break;
+            case 3:
                 packetid = strtol(token.c_str(), NULL, 10);
                 break;
             default:
@@ -179,7 +188,7 @@ bool read_trace(const char *path, event_queue_t &event_queue)
             return false;
         }
 
-        event_queue.push_back(Event(type, t, packetid));
+        event_queue.push_back(Event(type, t, packetid, mode));
     }
 
     return true;
@@ -206,12 +215,13 @@ int main(int argc, char *argv[])
      * [ phi ]
      * [omega]
      */
-    pendulum_state_t state_initial = {PARAM_x, PARAM_v, PARAM_angle, 0.0};
+    pendulum_state_t state_initial = MODE_0;
     InvertedPendulum pendulum = InvertedPendulum(PARAM_m, PARAM_M, PARAM_I, PARAM_l, 0.0, state_initial);
     state_sequence_t states;
 
-    LQRegulator lqr(LQR_K);
+    LQRegulator lqr(LQR_K_ORG);
 
+    pendulum_state_t current_target;
     while (!event_queue.empty())
     {
         Event e = *event_queue.begin();
@@ -235,17 +245,21 @@ int main(int argc, char *argv[])
             {
                 std::cout << e.packetid << " " << e.type << std::endl;
                 std::cerr << "Missing state" << std::endl;
-                exit(1);
+                // exit(1);
             }
             state = pkt_to_state[e.packetid];
-            u = lqr.control(state);
+
+            if(e.mode == stationary) u = lqr.control(state, MODE_0);
+            else if(e.mode == moving_1) u = lqr.control(state, MODE_1);
+            else if(e.mode == moving_2) u = lqr.control(state, MODE_2);
+            
             pkt_to_update[e.packetid] = u;
             break;
         case event_plant_receive:
             if (pkt_to_update.find(e.packetid) == pkt_to_update.end())
             {
                 std::cerr << "Missing update for packet id " << e.packetid << std::endl;
-                exit(1);
+                // exit(1);
             }
             u = pkt_to_update[e.packetid];
             pendulum.set_force(u);

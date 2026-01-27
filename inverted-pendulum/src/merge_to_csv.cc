@@ -14,7 +14,8 @@
 #define TOKEN_CONTROLLER_RECEIVE "controllerreceive"
 
 #define MODE_STATIONARY "stationary"
-#define MODE_MOVING "moving"
+#define MODE_MOVING_1 "moving_1"
+#define MODE_MOVING_2 "moving_2"
 
 char path_plantsend[MAX_STR_LEN];
 char path_plantreceive[MAX_STR_LEN];
@@ -81,6 +82,7 @@ bool read_trace(const char *path, event_queue_t &event_queue, event_type type)
 
     if (!infile.is_open())
     {
+        std::cout << path << std::endl;
         perror("Could not open trace file");
         return -1;
     }
@@ -98,8 +100,8 @@ bool read_trace(const char *path, event_queue_t &event_queue, event_type type)
             std::cerr << "Wrong format in input csv " << path << std::endl;
         }
         
-        std::cout << fields[0] << " " << fields[1] << std::endl;
-        int mode = std::stoi(fields[0]);
+        // std::cout << fields[0] << " " << fields[1] << std::endl;
+        int mode = std::stoi(fields[0].c_str());
         double d = strtod(fields[1].c_str(), NULL);
 
         Event e(type, d, packetid, static_cast<mode_type>(mode));
@@ -135,12 +137,18 @@ bool print_trace_csv(const char *path, const event_queue_t &event_queue)
             ofile << TOKEN_CONTROLLER_RECEIVE << ",";
             break;
         }
-        switch (e.mode){
-            case stationary:
-                ofile << MODE_STATIONARY << ",";
-            case moving:
-                ofile << MODE_MOVING << ",";
-        }
+        ofile << e.mode << ",";
+        // switch (e.mode){
+        //     case stationary:
+        //         ofile << MODE_STATIONARY << ",";
+        //         break;
+        //     case moving_1:
+        //         ofile << MODE_MOVING_1 << ",";
+        //         break;
+        //     case moving_2:
+        //         ofile << MODE_MOVING_2 << ",";
+        //         break;
+        // }
         ofile << e.packetid << std::endl;
     }
 

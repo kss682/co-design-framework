@@ -79,10 +79,12 @@ bool read_states(const char *path, state_sequence_t &states_vis)
             double d = strtod(token.c_str(), NULL);
             if (token_cnt == 0)
             {
+                // parse the time from csv
                 time_state.first = d;
             }
             else
             {
+                // parse the pendulum_state_t (x,v,phi,omega) from csv
                 time_state.second[token_cnt - 1] = d;
             }
             token_cnt++;
@@ -111,7 +113,7 @@ void prepare_states_vis(const state_sequence_t &states, state_sequence_t &states
 
     for (time_state_t time_state : states)
     {
-        if (time_state.first > t)
+        if (time_state.first >= t)
         {
             states_vis.push_back(time_state);
             t += period;
@@ -140,13 +142,14 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    
     prepare_states_vis(states, states_vis);
 
     sf::RenderWindow window(sf::VideoMode(1024, 480), "Inverted Pendulum");
 
     // Load font
     sf::Font font;
-    if (!font.loadFromFile("/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"))
+    if (!font.loadFromFile("../asset/FreeSansBold.ttf"))
     {
         std::cerr << "Failed to load font!\n";
     }

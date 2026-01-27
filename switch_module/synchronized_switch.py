@@ -6,6 +6,7 @@ from simpn.simulator import SimToken
 
 STREAM_PLACE = "STREAM_PLACE"
 NETWORK_PLACE = "NETWORK_PLACE"
+
 class SynchSwitch:
     """
     Docstring for SynchSwitch

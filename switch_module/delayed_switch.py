@@ -3,6 +3,9 @@ from loguru import logger
 from models.stream import Packet
 from simpn.simulator import SimToken
 
+STREAM_PLACE = "STREAM_PLACE"
+NETWORK_PLACE = "NETWORK_PLACE"
+
 class DelayedSwitch:
     name = "delayed_switch"
 
@@ -20,7 +23,7 @@ class DelayedSwitch:
         switch_time = deque()
         
         for _id, time in mode_switch:
-            switch_time.append([_id, time+10])
+            switch_time.append([_id, time+0.03])
         return switch_time
 
     def check_app_switch(self, network_clock):
@@ -39,28 +42,27 @@ class DelayedSwitch:
         logger.info(f"app switch triggered at {network_clock}")
         next_mode = self.modes.get(self.next_app_mode[0])
 
-        for _id, stream in self.streams.items():
+        for stream_id, stream in self.streams.items():
             if stream.triggered_by is None:
-                self.places[stream.src._id]["mode"].marking.clear()
-                self.places[stream.src._id]["stream"].marking.clear()
-                self.places[stream.src._id]["packet"].marking.clear()
-            # import pdb
-            # breakpoint()
+                self.places[STREAM_PLACE][stream_id].mode.marking.clear()
+                self.places[STREAM_PLACE][stream_id].stream.marking.clear()
+                self.places[STREAM_PLACE][stream_id].packet.marking.clear()        
+
         
-        for _id, stream in self.streams.items():
-            if _id in next_mode.streams:
-                self.places[stream.src._id]["mode"].add_token(SimToken(next_mode, time=network_clock))
-                self.places[stream.src._id]["packet"].add_token(
+        for stream_id, stream in self.streams.items():
+            if stream_id in next_mode.streams:
+                self.places[STREAM_PLACE][stream_id].mode.add_token(SimToken(next_mode, time=network_clock))
+                self.places[STREAM_PLACE][stream_id].packet.add_token(
                        SimToken(Packet(
                             seq_id=1,
-                            stream_id=stream._id,
+                            stream_id=stream.stream_id,
                             packet_time=0,
-                            mode_seq=str(next_mode._id)+"@"+str(network_clock)
+                            mode_seq=str(next_mode.mode_id)+"@"+str(network_clock)
                         ),
                             time=network_clock
                         )
                     )
-                self.places[stream.src._id]["stream"].add_token(SimToken(stream, time=network_clock))
+                self.places[STREAM_PLACE][stream_id].stream.add_token(SimToken(stream, time=network_clock))
 
         self.next_app_mode = self.app_mode_switch.popleft() if len(self.app_mode_switch) > 0 else None
 
@@ -69,10 +71,10 @@ class DelayedSwitch:
         next_mode = self.modes.get(self.next_net_mode[0])
 
         logger.info(f"network reconfig triggered at {network_clock}")
-        for _id, node in self.nodes.items():
-            if node._type == "NN":
-                self.places[_id]["mode"].marking.clear()
-                self.places[_id]["mode"].add_token(SimToken(next_mode, time=network_clock))
-                self.places[_id]["packet_last_seen"].clear()
+        for node_id, node in self.nodes.items():
+            if node.node_type == "NN":
+                self.places[NETWORK_PLACE][node_id].mode.marking.clear()
+                self.places[NETWORK_PLACE][node_id].mode.add_token(SimToken(next_mode, time=network_clock))
+                # self.places[NETWORK_PLACE][node_id].packet_last_seenlear()
 
         self.next_net_mode = self.net_mode_switch.popleft() if len(self.net_mode_switch) > 0 else None

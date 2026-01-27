@@ -48,8 +48,8 @@
             "dst": 101,
             "type": "tt",
             "release_time": 0,
-            "period": 0.03,
-            "deadline": 0.03
+            "period": 0.005,
+            "deadline": 0.005
         },
         {
             "id": 2,
@@ -58,7 +58,7 @@
             "type": "tt",
             "release_time": 0,
             "triggered_by": 1,
-            "deadline": 0.03
+            "deadline": 0.005
         },
         {
             "id": 3,
@@ -66,8 +66,8 @@
             "dst": 101,
             "type": "tt",
             "release_time": 0,
-            "period": 0.02,
-            "deadline": 0.02
+            "period": 0.005,
+            "deadline": 0.005
         },
         {
             "id": 4,
@@ -76,34 +76,58 @@
             "type": "tt",
             "release_time": 0,
             "triggered_by": 3,
-            "deadline": 0.02
+            "deadline": 0.005
+        },
+        {
+            "id": 5,
+            "src": 100,
+            "dst": 101,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.030,
+            "deadline": 0.030
+        },
+        {
+            "id": 6,
+            "src": 101,
+            "dst": 102,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 5,
+            "deadline": 0.030
         }
     ],
 
     "modes": {
-        "0": { "name": "s", "streams": [1], "schedule_id": 0 },
-        "1": { "name": "f", "streams": [3], "schedule_id": 1 }
+        "0": { "name": "stat", "streams": [5], "schedule_id": 0 },
+        "1": { "name": "moving1", "streams": [1], "schedule_id": 1 },
+        "2": { "name": "moving2", "streams": [3], "schedule_id": 2}
     },
 
     "schedules": {
-        "0": [
-            {"prob": 0.99, "delay": 0.020 },
-            {"prob": 0.01, "delay": 0.020 }
+        "2": [
+            {"prob": 0.99, "delay": 0.003 },
+            {"prob": 0.01, "delay": 0.004 }
         ],
         "1": [
-            { "prob": 0.99, "delay": 0.010 },
-            { "prob": 0.01, "delay": 0.010 }
+            { "prob": 0.99, "delay": 0.003 },
+            { "prob": 0.01, "delay": 0.004 }
+        ],
+        "0": [
+            { "prob": 0.99, "delay": 0.015 },
+            { "prob": 0.01, "delay": 0.020 }
         ]
     },
 
     "mode_switch":[
-        [0, 0],
-        [1, 10]
+        [1, 0],
+        [2, 10],
+        [0, 20]
     ],
 
     "link_delay": [
-        { "prob": 0.95, "delay": 0.0008},
-        { "prob": 0.05, "delay": 0.0008}
+        { "prob": 0.95, "delay": 0.001},
+        { "prob": 0.05, "delay": 0.001}
     ],
 
     "preconditions": {
@@ -119,33 +143,51 @@
             },
             "4": {
                 "rate": 0.01
+            },
+            "5": {
+                "rate": 0.01
+            },
+            "6": {
+                "rate": 0.01
             }
         }
     },
 
     "delivery_constraints": [
         {
-            "mode_id": 0,
+            "mode_id": 1,
             "stream_id": 1,
-            "min_packets": 1,
-            "window_size": 3
-        },
-        {
-            "mode_id": 0,
-            "stream_id": 2,
-            "min_packets": 1,
+            "min_packets": 2,
             "window_size": 3
         },
         {
             "mode_id": 1,
+            "stream_id": 2,
+            "min_packets": 2,
+            "window_size": 3
+        },
+        {
+            "mode_id": 2,
             "stream_id": 3,
             "min_packets": 2,
             "window_size": 3
         },
         {
-            "mode_id": 1,
+            "mode_id": 2,
             "stream_id": 4,
             "min_packets": 2,
+            "window_size": 3
+        },
+        {
+            "mode_id": 0,
+            "stream_id": 5,
+            "min_packets": 1,
+            "window_size": 3
+        },
+        {
+            "mode_id": 0,
+            "stream_id": 6,
+            "min_packets": 1,
             "window_size": 3
         }
     ]    
