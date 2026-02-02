@@ -3,28 +3,29 @@ import json
 import random
 from collections import defaultdict
 from collections import deque
-
 from loguru import logger
+
 from models.node import Node
 from models.links import Link
 from models.stream import Stream, Packet, Timer
 from models.place import StreamPlace, NetworkPlace
+from models.constants import STREAM_PLACE, NETWORK_PLACE
 from models.mode import Mode
 from switch_module.synchronized_switch import SynchSwitch
 from switch_module.delayed_switch import DelayedSwitch
+
 from reporter.time_reporter import TimesReporter
 from reporter.delivery_constraints import PacketDeliveryConstraints
 from simpn.simulator import SimProblem, SimToken
 from simpn.visualisation import Visualisation
 
 
-STREAM_PLACE = "STREAM_PLACE"
-NETWORK_PLACE = "NETWORK_PLACE"
 
-SWITCH_STRATEGY = [
-    # SynchSwitch,
-    DelayedSwitch
-]
+
+# SWITCH_STRATEGY = [
+#     # SynchSwitch
+#     DelayedSwitch
+# ]
 
 
 def load_data(filename:str):
@@ -509,10 +510,23 @@ def main():
         "--file",
         required=True
     )
+    parser.add_argument(
+        "-s",
+        "--strategy",
+        required=True
+    )
     args = parser.parse_args()
     nw_model_file = args.file
     logger.info("fetching network model from %s", nw_model_file)
 
+    strategy = args.strategy
+    if strategy == "Sync":
+        switch_class = SynchSwitch
+    elif strategy == "Delay":
+        switch_class = DelayedSwitch
+    else:
+        logger.info("Invalid switch strategy")
+        exit(1)
     data = load_data(nw_model_file)   
     if data is None:
         close_pgm()
@@ -526,23 +540,23 @@ def main():
      precondition_rate, 
      delivery_constraints) = load_network(data=data)
     
-    for switch_class in SWITCH_STRATEGY:
-        reporter = run_simulation(
-            nodes=nodes,
-            links=links,
-            streams=streams,
-            modes=modes,
-            sched=sched,
-            mode_switch=mode_switch.copy(),
-            switch_class=switch_class,
-            link_delays=link_delays,
-            precondition_rate=precondition_rate,
-            delivery_constraints=delivery_constraints
-        )
-        logger.info(f"report for {switch_class.name}")
-        reporter.e2e_validate()
-        reporter.validate_throuput()
-        reporter.write()
+
+    reporter = run_simulation(
+        nodes=nodes,
+        links=links,
+        streams=streams,
+        modes=modes,
+        sched=sched,
+        mode_switch=mode_switch.copy(),
+        switch_class=switch_class,
+        link_delays=link_delays,
+        precondition_rate=precondition_rate,
+        delivery_constraints=delivery_constraints
+    )
+    logger.info(f"report for {switch_class.name}")
+    reporter.e2e_validate()
+    reporter.validate_throuput()
+    reporter.write()
 
 
 
