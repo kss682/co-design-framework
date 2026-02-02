@@ -87,7 +87,7 @@ bool read_trace(const char *path, event_queue_t &event_queue, event_type type)
         return -1;
     }
 
-    unsigned int packetid = 0;
+    unsigned int packetid;
     std::string line;
     while (std::getline(infile, line))
     {
@@ -96,17 +96,16 @@ bool read_trace(const char *path, event_queue_t &event_queue, event_type type)
             continue;
         
         std::vector<std::string> fields = split(line, ',');
-        if(fields.size() > 2){
+        if(fields.size() > 3){
             std::cerr << "Wrong format in input csv " << path << std::endl;
         }
         
         // std::cout << fields[0] << " " << fields[1] << std::endl;
         int mode = std::stoi(fields[0].c_str());
         double d = strtod(fields[1].c_str(), NULL);
-
+        packetid = std::stoi(fields[2].c_str());
         Event e(type, d, packetid, static_cast<mode_type>(mode));
         event_queue.push_back(e);
-        packetid++;
     }
 
     return true;
