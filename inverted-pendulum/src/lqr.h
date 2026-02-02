@@ -21,9 +21,9 @@ class LQRegulator
 
     double control(const pendulum_state_t state, double pos);
 
-    double control(const pendulum_state_t state, const pendulum_state_t target_state);
+    double control(const pendulum_state_t state, const pendulum_state_t target_state, pendulum_state_t K);
   private:
-    const pendulum_state_t K;
+    pendulum_state_t K;
     double u_hat = 0;
 };
 
