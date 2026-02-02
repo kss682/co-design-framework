@@ -91,7 +91,7 @@ class TimesReporter(Reporter):
             *(fmt(r) for r in rows)
         ]
         table = "\n".join(table)
-        logger.info("\n{}", table)
+        # logger.info("\n{}", table)
 
 
     def validate_throuput(self):
@@ -158,8 +158,8 @@ class TimesReporter(Reporter):
                 
                         release = times.get("release_time")
                         complete = times.get("complete_time", None)
-                        if stream_id == st_id:
-                            writer.writerow([mode_id, release])
+                        if stream_id == st_id and complete is not None:
+                            writer.writerow([mode_id, release, pack_id])
 
             with open(dst_filename, mode='a', newline='') as dst_file:
                 writer = csv.writer(dst_file)
@@ -173,5 +173,5 @@ class TimesReporter(Reporter):
                         release = times.get("release_time")
                         complete = times.get("complete_time", None)
                         if stream_id == st_id and complete is not None:
-                            writer.writerow([mode_id, complete])
+                            writer.writerow([mode_id, complete, pack_id])
         print(f"Data split successful. Files generated in '{output_dir}'")

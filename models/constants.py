@@ -1,0 +1,6 @@
+"""
+    Constants
+"""
+
+STREAM_PLACE = "STREAM_PLACE"
+NETWORK_PLACE = "NETWORK_PLACE"
