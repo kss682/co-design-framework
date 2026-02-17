@@ -31,8 +31,8 @@
 #define LQR_K_ORG {                                                                                                                  \
          -1.0000000000001679, -2.7126628569811633, 42.94618303488281, 5.411763498735041                                 \
 }
-#define LQR_K_MODE1 {-0.96183101, -2.06165895, 23.80067011, 4.17745663}
-#define LQR_K_MODE0 {-0.31661315, -0.71078538, 13.12746744,  2.35946295}
+#define LQR_K_MODE1 {-0.96183101,  -2.06165895, -23.80067011,  -4.17745663}
+#define LQR_K_MODE0 {-0.31661315,  -0.71078538, -13.12746744,  -2.35946295}
 
 #define MAX_STR_LEN 1024
 
@@ -250,9 +250,9 @@ int main(int argc, char *argv[])
             }
             state = pkt_to_state[e.packetid];
 
-            if(e.mode == stationary) u = lqr.control(state, MODE_0, LQR_K_ORG);
-            else if(e.mode == moving_1) u = lqr.control(state, MODE_1, LQR_K_ORG);
-            else if(e.mode == moving_2) u = lqr.control(state, MODE_2, LQR_K_ORG);
+            if(e.mode == stationary) u = lqr.control(state, MODE_0, LQR_K_MODE0);
+            else if(e.mode == moving_1) u = lqr.control(state, MODE_1, LQR_K_MODE1);
+            else if(e.mode == moving_2) u = lqr.control(state, MODE_2, LQR_K_MODE1);
             
             pkt_to_update[e.packetid] = u;
             break;

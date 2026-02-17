@@ -42,10 +42,10 @@ void InvertedPendulum::operator()(const pendulum_state_t &x, pendulum_state_t &d
     double M_t = M + m;
 
     dxdt[0] = x[1];
-    dxdt[1] = (-m * l * s_t * o_2 + m * g * (m * l_2 / J_t) * s_t * c_t + F) / (M_t - m * (m * l_2 / J_t) * c_t * c_t);
+    dxdt[1] = (-m * l * s_t * o_2 - m * g * (m * l_2 / J_t) * s_t * c_t + F) / (M_t - m * (m * l_2 / J_t) * c_t * c_t);
     dxdt[2] = x[3];
     dxdt[3] =
-        (-m * l_2 * s_t * c_t * o_2 + M_t * g * l * s_t + l * c_t * F) / (J_t * (M_t / m) - m * (l * c_t) * (l * c_t));
+        (-m * l_2 * s_t * c_t * o_2 + M_t * g * l * s_t - l * c_t * F) / (J_t * (M_t / m) - m * (l * c_t) * (l * c_t));
 }
 
 InvertedPendulum::InvertedPendulum(double m, double M, double I, double l, double F, pendulum_state_t state)
