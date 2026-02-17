@@ -1,0 +1,32 @@
+{
+        "plants": {
+          "1": {
+              "node_sensor": 100,
+              "node_actuator": 102,
+              "initial_state": [1.0, 0, 0, 0],
+              "params": { "m": 0.2, "M": 0.5, "l": 0.3, "I": 0.006 }
+          },
+          "2": {
+              "node_sensor": 103,
+              "node_actuator": 104,
+              "initial_state": [3.0, 0, 0, 0],
+              "params": { "m": 0.2, "M": 0.5, "l": 0.3, "I": 0.006 }
+          }
+      },
+
+      "formation": {
+          "min_distance": 1.5,
+          "cart_width": 0.5
+      },
+
+    "targets": {
+          "left_formation": {
+              "1": [1.0, 0, 0, 0],
+              "2": [3.0, 0, 0, 0]
+          },
+          "right_formation": {
+              "1": [5.0, 0, 0, 0],
+              "2": [7.0, 0, 0, 0]
+          }
+      }
+}

@@ -24,6 +24,16 @@ add_executable(simulate-lqr
     event.h
 )
 
+add_executable(simulate-lqr-dual
+    inverted_pendulum.cc
+    inverted_pendulum.h
+    simulate-lqr-dual.cc
+    lqr.cc
+    lqr.h
+    event.cc
+    event.h
+)
+
 add_executable(merge_to_csv
     merge_to_csv.cc
     event.cc
@@ -35,7 +45,18 @@ add_executable(visualization
     inverted_pendulum.h
 )
 
+add_executable(visualization_dual
+    visualization_dual.cc
+)
+
 target_link_libraries(visualization
+    PRIVATE
+        sfml-graphics
+        sfml-window
+        sfml-system
+)
+
+target_link_libraries(visualization_dual
     PRIVATE
         sfml-graphics
         sfml-window
@@ -47,8 +68,17 @@ target_include_directories(simulate-lqr
         /opt/homebrew/include
 )
 
+target_include_directories(simulate-lqr-dual
+    PRIVATE
+        /opt/homebrew/include
+)
 
 target_include_directories(visualization
+    PRIVATE
+        /opt/homebrew/include
+)
+
+target_include_directories(visualization_dual
     PRIVATE
         /opt/homebrew/include
 )

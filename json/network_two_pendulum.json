@@ -1,0 +1,244 @@
+  {
+      "description": "Two pendulum formation control",
+
+      "nodes": [
+          {
+              "id": 100,
+              "type": "ES",
+              "name": "Pendulum1"
+          },
+          {
+              "id": 103,
+              "type": "ES",
+              "name": "Pendulum2"
+          },
+          {
+              "id": 101,
+              "type": "ES",
+              "name": "Controller"
+          },
+          {
+              "id": 102,
+              "type": "ES",
+              "name": "Pendulum1_actuator"
+          },
+          {
+              "id": 104,
+              "type": "ES",
+              "name": "Pendulum2_actuator"
+          },
+          {
+              "id": 1,
+              "type": "NN",
+              "name": "Switch1"
+          },
+          {
+              "id": 2,
+              "type": "NN",
+              "name": "Switch2"
+          }
+      ],
+
+      "links": [
+          { "src": 100, "dst": 1, "comment": "Pendulum1 sensor - Switch1" },
+          { "src": 103, "dst": 1, "comment": "Pendulum2 sensor - Switch1" },
+          { "src": 1, "dst": 101, "comment": "Switch1 - Controller" },
+          { "src": 101, "dst": 2, "comment": "Controller - Switch2" },
+          { "src": 2, "dst": 102, "comment": "Switch2 - Pendulum1 actuator" },
+          { "src": 2, "dst": 104, "comment": "Switch2 - Pendulum2 actuator" }
+      ],
+
+      "streams": [
+          {
+              "id": 1,
+              "name": "P1_sensor_fast",
+              "plant_id": 1,
+              "src": 100,
+              "dst": 101,
+              "type": "tt",
+              "release_time": 0,
+              "period": 0.005,
+              "deadline": 0.005
+          },
+          {
+              "id": 2,
+              "name": "P1_control_fast",
+              "plant_id": 1,
+              "src": 101,
+              "dst": 102,
+              "type": "tt",
+              "release_time": 0,
+              "triggered_by": 1,
+              "deadline": 0.005
+          },
+          {
+              "id": 3,
+              "name": "P2_sensor_fast",
+              "plant_id": 2,
+              "src": 103,
+              "dst": 101,
+              "type": "tt",
+              "release_time": 0,
+              "period": 0.005,
+              "deadline": 0.005
+          },
+          {
+              "id": 4,
+              "name": "P2_control_fast",
+              "plant_id": 2,
+              "src": 101,
+              "dst": 104,
+              "type": "tt",
+              "release_time": 0,
+              "triggered_by": 3,
+              "deadline": 0.005
+          },
+          {
+              "id": 5,
+              "name": "P1_sensor_slow",
+              "plant_id": 1,
+              "src": 100,
+              "dst": 101,
+              "type": "tt",
+              "release_time": 0,
+              "period": 0.030,
+              "deadline": 0.030
+          },
+          {
+              "id": 6,
+              "name": "P1_control_slow",
+              "plant_id": 1,
+              "src": 101,
+              "dst": 102,
+              "type": "tt",
+              "release_time": 0,
+              "triggered_by": 5,
+              "deadline": 0.030
+          },
+          {
+              "id": 7,
+              "name": "P2_sensor_slow",
+              "plant_id": 2,
+              "src": 103,
+              "dst": 101,
+              "type": "tt",
+              "release_time": 0,
+              "period": 0.030,
+              "deadline": 0.030
+          },
+          {
+              "id": 8,
+              "name": "P2_control_slow",
+              "plant_id": 2,
+              "src": 101,
+              "dst": 104,
+              "type": "tt",
+              "release_time": 0,
+              "triggered_by": 7,
+              "deadline": 0.030
+          }
+      ],
+
+      "modes": {
+          "0": {
+              "name": "move_left",
+              "streams": [5, 7],
+              "schedule_id": 0,
+              "targets": "move_right"
+          },
+          "1": {
+              "name": "right_formation",
+              "streams": [1, 3],
+              "schedule_id": 1,
+              "targets": "right_formation"
+          }
+      },
+
+      "schedules": {
+          "0": [
+              { "prob": 0.99, "delay": 0.015 },
+              { "prob": 0.01, "delay": 0.020 }
+          ],
+          "1": [
+              { "prob": 0.99, "delay": 0.001 },
+              { "prob": 0.01, "delay": 0.002 }
+          ]
+      },
+
+      "mode_switch": [
+          [0, 0],
+          [1, 5],
+          [0, 15],
+          [1, 25]
+      ],
+
+
+      "link_delay": [
+          { "prob": 0.95, "delay": 0.001 },
+          { "prob": 0.05, "delay": 0.002 }
+      ],
+
+      "preconditions": {
+          "network_nodes": {
+              "1": { "rate": 0.01 },
+              "2": { "rate": 0.01 },
+              "3": { "rate": 0.01 },
+              "4": { "rate": 0.01 },
+              "5": { "rate": 0.01 },
+              "6": { "rate": 0.01 },
+              "7": { "rate": 0.01 },
+              "8": { "rate": 0.01 }
+          }
+      },
+
+      "delivery_constraints": [
+          {
+              "mode_id": 0,
+              "stream_id": 5,
+              "min_packets": 1,
+              "window_size": 3
+          },
+          {
+              "mode_id": 0,
+              "stream_id": 6,
+              "min_packets": 1,
+              "window_size": 3
+          },
+          {
+              "mode_id": 0,
+              "stream_id": 7,
+              "min_packets": 1,
+              "window_size": 3
+          },
+          {
+              "mode_id": 0,
+              "stream_id": 8,
+              "min_packets": 1,
+              "window_size": 3
+          },
+          {
+              "mode_id": 1,
+              "stream_id": 1,
+              "min_packets": 2,
+              "window_size": 3
+          },
+          {
+              "mode_id": 1,
+              "stream_id": 2,
+              "min_packets": 2,
+              "window_size": 3
+          },
+          {
+              "mode_id": 1,
+              "stream_id": 3,
+              "min_packets": 2,
+              "window_size": 3
+          },
+          {
+              "mode_id": 1,
+              "stream_id": 4,
+              "min_packets": 2,
+              "window_size": 3
+          }
+      ]
+  }

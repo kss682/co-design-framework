@@ -34,6 +34,12 @@ class TimesReporter(Reporter):
 
 
             if event.get_id() in self.done_events and isinstance(token, Packet):
+                # For generate_events that are also done_events (triggered streams),
+                # only record completion for the triggering packet, not the newly generated one
+                if event.get_id() in self.generate_events and str(token.stream_id) in event.get_id():
+                    # This is the newly generated packet - skip completion recording
+                    continue
+
                 if (token.mode_seq, token.stream_id) in self.end_to_end and token.seq_id in self.end_to_end[(token.mode_seq, token.stream_id)]:
                     self.end_to_end[(token.mode_seq, token.stream_id)][token.seq_id]["complete_time"] = time
                 else:
@@ -175,3 +181,55 @@ class TimesReporter(Reporter):
                         if stream_id == st_id and complete is not None:
                             writer.writerow([mode_id, complete, pack_id])
         print(f"Data split successful. Files generated in '{output_dir}'")
+
+    def write_plant_traces(self, plant_streams, output_dir="simulation_results"):
+        """
+        Generate merged trace files per plant for dual-pendulum simulation.
+
+        :param plant_streams: dict mapping plant_id to dict with 'sensor' and 'control' stream lists
+                              e.g., {1: {'sensor': [1, 5], 'control': [2, 6]},
+                                     2: {'sensor': [3, 7], 'control': [4, 8]}}
+        :param output_dir: directory to write output files
+        """
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        for plant_id, stream_info in plant_streams.items():
+            sensor_streams = set(stream_info.get('sensor', []))
+            control_streams = set(stream_info.get('control', []))
+
+            # Collect all events for this plant
+            events = []
+
+            for key, packet_info in self.end_to_end.items():
+                mode_seq, stream_id = key
+                mode_id = int(mode_seq.split('@')[0])
+
+                for pack_id, times in packet_info.items():
+                    release = times.get("release_time")
+                    complete = times.get("complete_time", None)
+
+                    if stream_id in sensor_streams:
+                        # Sensor stream: plantsend at release, controllerreceive at complete
+                        if release is not None:
+                            events.append((release, "plantsend", mode_id, pack_id))
+                        if complete is not None:
+                            events.append((complete, "controllerreceive", mode_id, pack_id))
+
+                    elif stream_id in control_streams:
+                        # Control stream: plantreceive at complete
+                        if complete is not None:
+                            events.append((complete, "plantreceive", mode_id, pack_id))
+
+            # Sort events by time
+            events.sort(key=lambda x: x[0])
+
+            # Write to file
+            filename = os.path.join(output_dir, f"plant{plant_id}_trace.csv")
+            with open(filename, mode='w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(["# t", "event_type", "mode", "packet_id"])
+                for event in events:
+                    writer.writerow(event)
+
+            logger.info(f"Plant {plant_id} trace written to {filename} ({len(events)} events)")
