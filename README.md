@@ -1,1 +1,1 @@
-# co-design-verification-script
+# Co-design Validation Framework
