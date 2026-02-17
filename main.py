@@ -19,7 +19,8 @@ from reporter.delivery_constraints import PacketDeliveryConstraints
 from simpn.simulator import SimProblem, SimToken
 from simpn.visualisation import Visualisation
 
-
+import sys
+sys.setrecursionlimit(10000)
 
 
 # SWITCH_STRATEGY = [
@@ -90,7 +91,8 @@ def load_network(data: dict):
                 release_time=stm.get("release_time", None),
                 period=stm.get("period", None),
                 deadline=stm.get("deadline", None),
-                triggered_by=stm.get("triggered_by", None)
+                triggered_by=stm.get("triggered_by", None),
+                plant_id=stm.get("plant_id", None)
             )
     logger.info(f" {len(streams)} streams found in the network")
 
@@ -363,7 +365,7 @@ def build_petri_net(
 
         
         if src.node_type == "NN":
-            event_name = "t_NN_" + str(src.node_id)
+            event_name = "t_NN_" + str(src.node_id) + "_" + str(dest.node_id)
             network.add_event(
                 inflow=[
                     places[NETWORK_PLACE][src.node_id].mode,
@@ -404,6 +406,7 @@ def build_petri_net(
                                 places[NETWORK_PLACE][dest.node_id].node
                             ],
                             behavior=generate_link_delay_function(link_delay=link_delays),
+                            guard=accept_condition(stream_id=stream_id),
                             name=event_name
                         )
 
@@ -471,11 +474,10 @@ def run_simulation(nodes,
         places=places,
         nodes=nodes,
         mode_switch=mode_switch,
-
     )
     active_model = True
 
-    # Visualisation(network).show()
+    Visualisation(network).show()
     while network.clock < 31 and active_model:
         bindings = network.bindings()
         if sync_switch.check_app_switch(network_clock=network.clock):
@@ -557,6 +559,20 @@ def main():
     reporter.e2e_validate()
     reporter.validate_throuput()
     reporter.write()
+
+    # Build plant_streams mapping for dual-pendulum trace generation
+    plant_streams = defaultdict(lambda: {'sensor': [], 'control': []})
+    for st_id, st in streams.items():
+        if st.plant_id is not None:
+            if st.triggered_by is None:
+                # Sensor stream (has period, no triggered_by)
+                plant_streams[st.plant_id]['sensor'].append(st_id)
+            else:
+                # Control stream (triggered by sensor)
+                plant_streams[st.plant_id]['control'].append(st_id)
+
+    if plant_streams:
+        reporter.write_plant_traces(dict(plant_streams))
 
 
 

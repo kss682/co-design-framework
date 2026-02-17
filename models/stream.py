@@ -22,6 +22,7 @@ class Stream:
     period: Optional[int]
     deadline: Optional[int]
     triggered_by: Optional[int]
+    plant_id: Optional[int] = None
 
 @dataclass
 class Packet:
