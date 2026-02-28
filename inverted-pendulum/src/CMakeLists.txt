@@ -34,6 +34,19 @@ add_executable(simulate-lqr-dual
     event.h
 )
 
+add_executable(simulate-handoff
+    inverted_pendulum.cc
+    inverted_pendulum.h
+    simulate-handoff.cc
+    lqr.cc
+    lqr.h
+)
+
+target_include_directories(simulate-handoff
+    PRIVATE
+        /opt/homebrew/include
+)
+
 add_executable(merge_to_csv
     merge_to_csv.cc
     event.cc

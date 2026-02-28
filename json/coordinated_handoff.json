@@ -1,0 +1,221 @@
+{
+    "nodes": [
+        {"id": 100, "type": "ES"},
+        {"id": 101, "type": "ES"},
+        {"id": 102, "type": "ES"},
+        {"id": 200, "type": "ES"},
+        {"id": 201, "type": "ES"},
+        {"id": 202, "type": "ES"},
+        {"id": 300, "type": "ES"},
+        {"id": 1,   "type": "NN"},
+        {"id": 2,   "type": "NN"}
+    ],
+
+    "links": [
+        {"src": 100, "dst": 1},
+        {"src": 1, "dst": 102},
+        {"src": 102, "dst": 1},
+        {"src": 1, "dst": 101},
+        {"src": 200, "dst": 2},
+        {"src": 2, "dst": 202},
+        {"src": 202, "dst": 2},
+        {"src": 2, "dst": 201},
+        {"src": 1, "dst": 2},
+        {"src": 2, "dst": 1},
+        {"src": 1, "dst": 300},
+        {"src": 300, "dst": 1}
+    ],
+
+    "streams": [
+        {
+            "id": 1,
+            "plant_id": 1,
+            "src": 100,
+            "dst": 102,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.005,
+            "deadline": 0.005
+        },
+        {
+            "id": 2,
+            "plant_id": 1,
+            "src": 100,
+            "dst": 300,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.005,
+            "deadline": 0.005
+        },
+        {
+            "id": 3,
+            "plant_id": 1,
+            "src": 102,
+            "dst": 101,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 1,
+            "deadline": 0.005
+        },
+        {
+            "id": 4,
+            "plant_id": 1,
+            "src": 100,
+            "dst": 102,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.030,
+            "deadline": 0.030
+        },
+        {
+            "id": 5,
+            "plant_id": 1,
+            "src": 100,
+            "dst": 300,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.030,
+            "deadline": 0.030
+        },
+        {
+            "id": 6,
+            "plant_id": 1,
+            "src": 102,
+            "dst": 101,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 4,
+            "deadline": 0.030
+        },
+        {
+            "id": 7,
+            "plant_id": 2,
+            "src": 200,
+            "dst": 202,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.005,
+            "deadline": 0.005
+        },
+        {
+            "id": 8,
+            "plant_id": 2,
+            "src": 200,
+            "dst": 300,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.005,
+            "deadline": 0.005
+        },
+        {
+            "id": 9,
+            "plant_id": 2,
+            "src": 202,
+            "dst": 201,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 7,
+            "deadline": 0.005
+        },
+        {
+            "id": 10,
+            "plant_id": 2,
+            "src": 200,
+            "dst": 202,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.030,
+            "deadline": 0.030
+        },
+        {
+            "id": 11,
+            "plant_id": 2,
+            "src": 200,
+            "dst": 300,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.030,
+            "deadline": 0.030
+        },
+        {
+            "id": 12,
+            "plant_id": 2,
+            "src": 202,
+            "dst": 201,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 10,
+            "deadline": 0.030
+        },
+        {
+            "id": 13,
+            "plant_id": 2,
+            "src": 300,
+            "dst": 201,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 8,
+            "deadline": 0.005
+        }
+    ],
+
+    "modes": {
+        "0": {"name": "P1_moving_P2_stationary", "streams": [1, 2, 3, 10, 11, 12], "schedule_id": 0},
+        "1": {"name": "P1_stationary_P2_moving", "streams": [4, 5, 6, 7, 8, 9, 13], "schedule_id": 1}
+    },
+
+    "schedules": {
+        "0": [
+            {"prob": 0.98, "delay": 0.0008},
+            {"prob": 0.02, "delay": 0.002}
+        ],
+        "1": [
+            {"prob": 0.98, "delay": 0.0008},
+            {"prob": 0.02, "delay": 0.002}
+        ]
+    },
+
+    "mode_switch": [
+        [0, 0.0],
+        [1, 5.0]
+    ],
+
+    "link_delay": [
+        {"prob": 0.95, "delay": 0.0005},
+        {"prob": 0.05, "delay": 0.001}
+    ],
+
+    "preconditions": {
+        "network_nodes": {
+            "1":  {"rate": 0.005},
+            "2":  {"rate": 0.005},
+            "3":  {"rate": 0.005},
+            "4":  {"rate": 0.030},
+            "5":  {"rate": 0.030},
+            "6":  {"rate": 0.030},
+            "7":  {"rate": 0.005},
+            "8":  {"rate": 0.005},
+            "9":  {"rate": 0.005},
+            "10": {"rate": 0.030},
+            "11": {"rate": 0.030},
+            "12": {"rate": 0.030},
+            "13": {"rate": 0.005}
+        }
+    },
+
+    "delivery_constraints": [
+        {"mode_id": 0, "stream_id": 1,  "min_packets": 3, "window_size": 4},
+        {"mode_id": 0, "stream_id": 2,  "min_packets": 3, "window_size": 4},
+        {"mode_id": 0, "stream_id": 3,  "min_packets": 3, "window_size": 4},
+        {"mode_id": 0, "stream_id": 10, "min_packets": 2, "window_size": 4},
+        {"mode_id": 0, "stream_id": 11, "min_packets": 2, "window_size": 4},
+        {"mode_id": 0, "stream_id": 12, "min_packets": 2, "window_size": 4},
+        {"mode_id": 1, "stream_id": 4,  "min_packets": 2, "window_size": 4},
+        {"mode_id": 1, "stream_id": 5,  "min_packets": 2, "window_size": 4},
+        {"mode_id": 1, "stream_id": 6,  "min_packets": 2, "window_size": 4},
+        {"mode_id": 1, "stream_id": 7,  "min_packets": 3, "window_size": 4},
+        {"mode_id": 1, "stream_id": 8,  "min_packets": 3, "window_size": 4},
+        {"mode_id": 1, "stream_id": 9,  "min_packets": 3, "window_size": 4},
+        {"mode_id": 1, "stream_id": 13, "min_packets": 2, "window_size": 3}
+    ]
+}
