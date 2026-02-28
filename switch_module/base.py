@@ -56,7 +56,8 @@ class Switch(ABC):
                 self.places[STREAM_PLACE][stream_id].packet.marking.clear()
 
         for stream_id, stream in self.streams.items():
-            if stream_id in next_mode.streams:
+            # Only reinitialize periodic streams (those without triggered_by)
+            if stream_id in next_mode.streams and stream.triggered_by is None:
                 self.places[STREAM_PLACE][stream_id].mode.add_token(SimToken(next_mode, time=network_clock))
                 self.places[STREAM_PLACE][stream_id].packet.add_token(
                     SimToken(
@@ -65,7 +66,7 @@ class Switch(ABC):
                             stream_id=stream.stream_id,
                             packet_time=0,
                             mode_seq=str(next_mode.mode_id)+"@"+str(network_clock)
-                        ), 
+                        ),
                         time=network_clock
                         )
                 )

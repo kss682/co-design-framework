@@ -212,14 +212,14 @@ class TimesReporter(Reporter):
                     if stream_id in sensor_streams:
                         # Sensor stream: plantsend at release, controllerreceive at complete
                         if release is not None:
-                            events.append((release, "plantsend", mode_id, pack_id))
+                            events.append((release, "plantsend", mode_id, pack_id, stream_id))
                         if complete is not None:
-                            events.append((complete, "controllerreceive", mode_id, pack_id))
+                            events.append((complete, "controllerreceive", mode_id, pack_id, stream_id))
 
                     elif stream_id in control_streams:
                         # Control stream: plantreceive at complete
                         if complete is not None:
-                            events.append((complete, "plantreceive", mode_id, pack_id))
+                            events.append((complete, "plantreceive", mode_id, pack_id, stream_id))
 
             # Sort events by time
             events.sort(key=lambda x: x[0])
@@ -228,7 +228,7 @@ class TimesReporter(Reporter):
             filename = os.path.join(output_dir, f"plant{plant_id}_trace.csv")
             with open(filename, mode='w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(["# t", "event_type", "mode", "packet_id"])
+                writer.writerow(["# t", "event_type", "mode", "packet_id", "stream_id"])
                 for event in events:
                     writer.writerow(event)
 

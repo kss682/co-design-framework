@@ -176,6 +176,10 @@ def generate_nw_function(sched, precondition_rate):
         method to simulate the network delay based on the schedule guarantee from json
     """
     def delay_function(mode, p):
+        # TT network: streams not scheduled in the current network mode are dropped
+        if p.stream_id not in mode.streams:
+            return [SimToken(mode), None]
+
         now = p.packet_time
         st_id = p.stream_id
         rand = random.random()
@@ -237,9 +241,47 @@ def accept_condition_triggered(stream):
         return packet.stream_id == stream.triggered_by
     return guard
 
+def accept_nn_condition(stream_ids):
+    frozen = frozenset(stream_ids)
+    def guard(mode, packet):
+        return packet.stream_id in frozen
+    return guard
+
+def compute_stream_nn_links(streams, nodes, links):
+    """BFS: for each NN link (src_id, dst_id), find which stream IDs traverse it."""
+    adj = defaultdict(list)
+    for link in links:
+        adj[link.src.node_id].append(link.dst.node_id)
+
+    stream_on_link = defaultdict(set)
+    for stream_id, stream in streams.items():
+        start, end = stream.src.node_id, stream.dst.node_id
+        if start == end:
+            continue
+        visited = {start}
+        queue = deque([[start]])
+        found = False
+        while queue and not found:
+            path = queue.popleft()
+            curr = path[-1]
+            for neighbor in adj[curr]:
+                if neighbor == end:
+                    full_path = path + [end]
+                    for i in range(len(full_path) - 1):
+                        u, v = full_path[i], full_path[i + 1]
+                        if nodes[u].node_type == "NN":
+                            stream_on_link[(u, v)].add(stream_id)
+                    found = True
+                    break
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(path + [neighbor])
+    return stream_on_link
+
 
 def build_petri_net(
         network,
+        nodes,
         modes,
         links,
         streams,
@@ -251,8 +293,18 @@ def build_petri_net(
     places = defaultdict(dict)
     generate_events = list()
     done_events = list()
+    stream_on_link = compute_stream_nn_links(streams, nodes, links)
     trigger_src_nodes = {
         st.src.node_id
+        for st in streams.values()
+        if st.triggered_by is not None
+    }
+
+    # Pre-compute which stream IDs have a triggered child stream.
+    # Only these streams can rely on the triggered child's generate_event
+    # to mark their done place. All others need an explicit done_event.
+    streams_with_triggered_child = {
+        st.triggered_by
         for st in streams.values()
         if st.triggered_by is not None
     }
@@ -299,8 +351,9 @@ def build_petri_net(
                 )
                 generate_events.append(event_name)
 
-                # What happens if multiple streams have the same end system node ?
-                if dst_node.node_id not in trigger_src_nodes:
+                # Create a done_event unless a triggered child stream already
+                # handles marking this stream's done place via its generate_event.
+                if stream_id not in streams_with_triggered_child:
                     event_name = "done_event_"+str(stream_id)
                     network.add_event(
                         [
@@ -309,7 +362,8 @@ def build_petri_net(
                         [
                             places[STREAM_PLACE][stream_id].done
                         ],
-                        behavior= lambda p: [SimToken(p)],
+                        behavior=lambda p: [SimToken(p)],
+                        guard=accept_condition(stream_id),
                         name=event_name
                     )
                     done_events.append(event_name)
@@ -366,6 +420,7 @@ def build_petri_net(
         
         if src.node_type == "NN":
             event_name = "t_NN_" + str(src.node_id) + "_" + str(dest.node_id)
+            allowed = stream_on_link.get((src.node_id, dest.node_id), set())
             network.add_event(
                 inflow=[
                     places[NETWORK_PLACE][src.node_id].mode,
@@ -376,6 +431,7 @@ def build_petri_net(
                     places[NETWORK_PLACE][dest.node_id].node
                 ],
                 behavior=generate_nw_function(sched, precondition_rate),
+                guard=accept_nn_condition(allowed),
                 name = event_name
             )
             
@@ -438,6 +494,7 @@ def run_simulation(nodes,
     network = SimProblem()
     places, generate_events, done_events = build_petri_net(
         network,
+        nodes,
         modes,
         links,
         streams,
@@ -452,15 +509,18 @@ def run_simulation(nodes,
 
     logger.info(f"Current mode: {current_mode_id}")
     for st in mode.streams:
-        places[STREAM_PLACE][st].mode.put(mode)
-        places[STREAM_PLACE][st].packet.put(
-            Packet(
-                seq_id=1, stream_id=st, packet_time=0, mode_seq=str(current_mode_id)+"@" + str(time)
+        # Only initialize periodic streams (those without triggered_by)
+        # Triggered streams don't have mode/packet/stream places
+        if streams.get(st).triggered_by is None:
+            places[STREAM_PLACE][st].mode.put(mode)
+            places[STREAM_PLACE][st].packet.put(
+                Packet(
+                    seq_id=1, stream_id=st, packet_time=0, mode_seq=str(current_mode_id)+"@" + str(time)
+                )
             )
-        )
-        places[STREAM_PLACE][st].stream.put(
-            streams.get(st)
-        )
+            places[STREAM_PLACE][st].stream.put(
+                streams.get(st)
+            )
 
     for key in places[NETWORK_PLACE].keys():
         if nodes.get(key).node_type == "NN":
@@ -478,7 +538,7 @@ def run_simulation(nodes,
     active_model = True
 
     Visualisation(network).show()
-    while network.clock < 31 and active_model:
+    while network.clock < 10 and active_model:
         bindings = network.bindings()
         if sync_switch.check_app_switch(network_clock=network.clock):
             sync_switch.app_switch(network_clock=network.clock)
