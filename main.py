@@ -1,4 +1,5 @@
 import argparse
+import math
 import json
 import random
 from collections import defaultdict
@@ -15,7 +16,7 @@ from switch_module.synchronized_switch import SynchSwitch
 from switch_module.delayed_switch import DelayedSwitch
 
 from reporter.time_reporter import TimesReporter
-from reporter.delivery_constraints import PacketDeliveryConstraints
+from reporter.delivery_constraints import Guarantee, PacketDeliveryConstraints
 from simpn.simulator import SimProblem, SimToken
 from simpn.visualisation import Visualisation
 
@@ -431,7 +432,7 @@ def build_petri_net(
                     places[NETWORK_PLACE][dest.node_id].node
                 ],
                 behavior=generate_nw_function(sched, precondition_rate),
-                guard=accept_nn_condition(allowed),
+                # guard=accept_nn_condition(allowed),
                 name = event_name
             )
             
@@ -537,8 +538,8 @@ def run_simulation(nodes,
     )
     active_model = True
 
-    Visualisation(network).show()
-    while network.clock < 10 and active_model:
+    # Visualisation(network).show()
+    while network.clock < 20 and active_model:
         bindings = network.bindings()
         if sync_switch.check_app_switch(network_clock=network.clock):
             sync_switch.app_switch(network_clock=network.clock)
@@ -577,6 +578,11 @@ def main():
         "--strategy",
         required=True
     )
+    parser.add_argument(
+        "-b",
+        "--benchmark",
+        required=False
+    )
     args = parser.parse_args()
     nw_model_file = args.file
     logger.info("fetching network model from %s", nw_model_file)
@@ -602,37 +608,80 @@ def main():
      precondition_rate, 
      delivery_constraints) = load_network(data=data)
     
+    if args.benchmark is None:
+        reporter = run_simulation(
+            nodes=nodes,
+            links=links,
+            streams=streams,
+            modes=modes,
+            sched=sched,
+            mode_switch=mode_switch.copy(),
+            switch_class=switch_class,
+            link_delays=link_delays,
+            precondition_rate=precondition_rate,
+            delivery_constraints=delivery_constraints
+        )
+        logger.info(f"report for {switch_class.name}")
+        reporter.e2e_validate()
+        reporter.validate_throuput()
+        reporter.write()
 
-    reporter = run_simulation(
-        nodes=nodes,
-        links=links,
-        streams=streams,
-        modes=modes,
-        sched=sched,
-        mode_switch=mode_switch.copy(),
-        switch_class=switch_class,
-        link_delays=link_delays,
-        precondition_rate=precondition_rate,
-        delivery_constraints=delivery_constraints
-    )
-    logger.info(f"report for {switch_class.name}")
-    reporter.e2e_validate()
-    reporter.validate_throuput()
-    reporter.write()
+        # Build plant_streams mapping for dual-pendulum trace generation
+        plant_streams = defaultdict(lambda: {'sensor': [], 'control': []})
+        for st_id, st in streams.items():
+            if st.plant_id is not None:
+                if st.triggered_by is None:
+                    # Sensor stream (has period, no triggered_by)
+                    plant_streams[st.plant_id]['sensor'].append(st_id)
+                else:
+                    # Control stream (triggered by sensor)
+                    plant_streams[st.plant_id]['control'].append(st_id)
 
-    # Build plant_streams mapping for dual-pendulum trace generation
-    plant_streams = defaultdict(lambda: {'sensor': [], 'control': []})
-    for st_id, st in streams.items():
-        if st.plant_id is not None:
-            if st.triggered_by is None:
-                # Sensor stream (has period, no triggered_by)
-                plant_streams[st.plant_id]['sensor'].append(st_id)
-            else:
-                # Control stream (triggered by sensor)
-                plant_streams[st.plant_id]['control'].append(st_id)
+        if plant_streams:
+            reporter.write_plant_traces(dict(plant_streams))
+    else:
+        N = int(args.benchmark)
+        window_violations = 0
+        control_violations = 0
+        deadline_miss_sum = 0.0
+        max_interrupt_list = []
+        
+        for itr in range(1, N+1):
+            reporter = run_simulation(
+                nodes=nodes,
+                links=links,
+                streams=streams,
+                modes=modes,
+                sched=sched,
+                mode_switch=mode_switch.copy(),
+                switch_class=switch_class,
+                link_delays=link_delays,
+                precondition_rate=precondition_rate,
+                delivery_constraints=delivery_constraints
+            )
+            logger.info(f"report for {switch_class.name}")
+            reporter.e2e_validate()
+            if reporter.validate_throuput():
+                window_violations += 1
+            
+        window_violation_prob = window_violations / N
+        control_violation_prob = control_violations / N
+        mean_deadline_miss = deadline_miss_sum / N
+        mean_interrupt = sum(max_interrupt_list) / N
+        
+        p = window_violation_prob
+        ci = 1.96 * math.sqrt(p * (1 - p) / N)
 
-    if plant_streams:
-        reporter.write_plant_traces(dict(plant_streams))
+        results = {
+        "N": N,
+        "window_violation_probability": p,
+        "ci_lower": p - ci,
+        "ci_upper": p + ci,
+        "control_violation_probability": control_violation_prob,
+        "mean_deadline_miss": mean_deadline_miss,
+        "mean_interrupt": mean_interrupt
+        }
+        print(results)
 
 
 
