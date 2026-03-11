@@ -607,7 +607,7 @@ def main():
      link_delays, 
      precondition_rate, 
      delivery_constraints) = load_network(data=data)
-    
+    print(args.benchmark)
     if args.benchmark is None:
         reporter = run_simulation(
             nodes=nodes,
@@ -623,7 +623,7 @@ def main():
         )
         logger.info(f"report for {switch_class.name}")
         reporter.e2e_validate()
-        reporter.validate_throuput()
+        reporter.validate_consecutive_deadline_miss()
         reporter.write()
 
         # Build plant_streams mapping for dual-pendulum trace generation
@@ -636,13 +636,12 @@ def main():
                 else:
                     # Control stream (triggered by sensor)
                     plant_streams[st.plant_id]['control'].append(st_id)
-
+        print(plant_streams)
         if plant_streams:
             reporter.write_plant_traces(dict(plant_streams))
     else:
         N = int(args.benchmark)
         window_violations = 0
-        control_violations = 0
         deadline_miss_sum = 0.0
         max_interrupt_list = []
         
@@ -661,23 +660,24 @@ def main():
             )
             logger.info(f"report for {switch_class.name}")
             reporter.e2e_validate()
-            if reporter.validate_throuput():
+            # if reporter.validate_throuput():
+            #     window_violations += 1
+            if reporter.validate_consecutive_deadline_miss():
                 window_violations += 1
             
         window_violation_prob = window_violations / N
-        control_violation_prob = control_violations / N
         mean_deadline_miss = deadline_miss_sum / N
         mean_interrupt = sum(max_interrupt_list) / N
         
         p = window_violation_prob
         ci = 1.96 * math.sqrt(p * (1 - p) / N)
 
+
         results = {
         "N": N,
         "window_violation_probability": p,
         "ci_lower": p - ci,
         "ci_upper": p + ci,
-        "control_violation_probability": control_violation_prob,
         "mean_deadline_miss": mean_deadline_miss,
         "mean_interrupt": mean_interrupt
         }

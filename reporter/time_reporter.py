@@ -16,6 +16,7 @@ class TimesReporter(Reporter):
         self.streams = streams
         self.delivery_constraints = delivery_constraints
         self.delivery_status = defaultdict(list)
+        
         logger.info(f"registering generate_events: {generate_events}")
         logger.info(f"registering generate_events: {done_events}")
         self.csv_data = []
@@ -101,7 +102,6 @@ class TimesReporter(Reporter):
 
 
     def validate_throuput(self):
-        logger.info(self.delivery_constraints)
         results = dict()
         for key, packet in self.end_to_end.items():
             mode_seq, stream_id = key
@@ -143,6 +143,45 @@ class TimesReporter(Reporter):
 
             logger.info(f"Delivery constraint of {min_packets}/{window_size} (min_packet/window) for mode {mode_seq} with stream {stream_id} is {status}")
 
+        return len(set(results.values())) > 1
+    
+    def validate_consecutive_deadline_miss(self):
+        results = dict()
+        for key, packet in self.end_to_end.items():
+            mode_seq, stream_id = key
+            mode_id = int(mode_seq.split('@')[0])
+            deadline_miss_threshold = self.delivery_constraints.get((mode_id, stream_id)).min_packets
+
+            violated_count = 0
+            status = self.delivery_status.get((mode_seq, stream_id))
+
+            for i in range(len(status)):
+                if status[i] == "Satisfied":
+                    violated_count = 0
+                    continue
+                
+                if status[i] == "Violated":
+                    violated_count+=1
+                
+                if violated_count > deadline_miss_threshold:
+                    results[(mode_seq, stream_id)] = "Violated"
+                    break
+            
+            if results.get((mode_seq, stream_id), None) is not None:
+                continue
+
+            results[(mode_seq, stream_id)] = "Satisfied"
+
+        for key, status in results.items():
+            mode_seq, stream_id = key
+            mode_id = int(mode_seq.split('@')[0])
+
+            min_packets = self.delivery_constraints.get((mode_id, stream_id)).min_packets
+
+            logger.info(f"Delivery constraint of {min_packets} consecutive deadline miss for mode {mode_seq} with stream {stream_id} is {status}")
+
+
+        return len(set(results.values())) > 1
 
     def write(self, output_dir="simulation_results"):
         if not os.path.exists(output_dir):
@@ -212,14 +251,14 @@ class TimesReporter(Reporter):
                     if stream_id in sensor_streams:
                         # Sensor stream: plantsend at release, controllerreceive at complete
                         if release is not None:
-                            events.append((release, "plantsend", mode_id, pack_id, stream_id))
+                            events.append((release, "plantsend", mode_id, pack_id))
                         if complete is not None:
-                            events.append((complete, "controllerreceive", mode_id, pack_id, stream_id))
+                            events.append((complete, "controllerreceive", mode_id, pack_id))
 
                     elif stream_id in control_streams:
                         # Control stream: plantreceive at complete
                         if complete is not None:
-                            events.append((complete, "plantreceive", mode_id, pack_id, stream_id))
+                            events.append((complete, "plantreceive", mode_id, pack_id))
 
             # Sort events by time
             events.sort(key=lambda x: x[0])
