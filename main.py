@@ -480,7 +480,8 @@ def run_simulation(nodes,
                    switch_class, 
                    link_delays, 
                    precondition_rate,
-                   delivery_constraints
+                   delivery_constraints,
+                   sim_time
                     ):
     """
     Docstring for run_simulation
@@ -539,7 +540,7 @@ def run_simulation(nodes,
     active_model = True
 
     # Visualisation(network).show()
-    while network.clock < 20 and active_model:
+    while network.clock < int(sim_time) and active_model:
         bindings = network.bindings()
         if sync_switch.check_app_switch(network_clock=network.clock):
             sync_switch.app_switch(network_clock=network.clock)
@@ -579,6 +580,11 @@ def main():
         required=True
     )
     parser.add_argument(
+        "-t",
+        "--time",
+        required=True
+    )
+    parser.add_argument(
         "-b",
         "--benchmark",
         required=False
@@ -595,19 +601,23 @@ def main():
     else:
         logger.info("Invalid switch strategy")
         exit(1)
-    data = load_data(nw_model_file)   
+
+    # fetch the network data from json
+    data = load_data(nw_model_file)
     if data is None:
         close_pgm()
-    (nodes, 
-     links, 
-     streams, 
-     modes, 
-     sched, 
-     mode_switch, 
-     link_delays, 
-     precondition_rate, 
+
+    # load the system network into corresponding objects
+    (nodes,
+     links,
+     streams,
+     modes,
+     sched,
+     mode_switch,
+     link_delays,
+     precondition_rate,
      delivery_constraints) = load_network(data=data)
-    print(args.benchmark)
+    
     if args.benchmark is None:
         reporter = run_simulation(
             nodes=nodes,
@@ -619,7 +629,8 @@ def main():
             switch_class=switch_class,
             link_delays=link_delays,
             precondition_rate=precondition_rate,
-            delivery_constraints=delivery_constraints
+            delivery_constraints=delivery_constraints,
+            sim_time=args.time
         )
         logger.info(f"report for {switch_class.name}")
         reporter.e2e_validate()
@@ -656,7 +667,8 @@ def main():
                 switch_class=switch_class,
                 link_delays=link_delays,
                 precondition_rate=precondition_rate,
-                delivery_constraints=delivery_constraints
+                delivery_constraints=delivery_constraints,
+                sim_time=args.time
             )
             logger.info(f"report for {switch_class.name}")
             reporter.e2e_validate()
