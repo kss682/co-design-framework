@@ -1,7 +1,9 @@
 #include "inverted_pendulum.h"
 #include <boost/numeric/odeint.hpp>
+// #include <boost/numeric/odeint/stepper/implicit_euler.hpp>
 
 typedef boost::numeric::odeint::runge_kutta4<pendulum_state_t> rk4;
+typedef boost::numeric::odeint::runge_kutta_dopri5<pendulum_state_t> dopri5_t;
 
 // Gravity [m/s^2]
 const double g = 9.8067;
@@ -78,8 +80,9 @@ void InvertedPendulum::simulate(double d, double dt, state_sequence_t &states)
 {
     Observer observer(states);
 
-    integrate_const(rk4(), *this, state, t, t + d, dt, observer);
-
+    auto stepper = make_controlled(1e-6, 1e-6, dopri5_t());
+    // auto stepper = rk4();
+    integrate_const(stepper, *this, state, t, t + d, dt, observer);
     // Simulation ends at last timestamp of last state.
     // Simulation might not end exactly at time t+d, but
     // at some time t' with t+d - dt < t' <= t+d.
@@ -90,6 +93,7 @@ void InvertedPendulum::simulate(double dt, state_sequence_t &states)
 {
     Observer observer(states);
 
+   
     rk4().do_step(*this, state, t, dt);
 
     observer(state, t);
