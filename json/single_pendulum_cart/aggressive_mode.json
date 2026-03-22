@@ -1,0 +1,112 @@
+{
+    "nodes": [
+        {
+            "id": 100,
+            "type": "ES"
+        },
+        {
+            "id": 101,
+            "type": "ES"
+        },
+        {
+            "id": 102,
+            "type": "ES"
+        },
+        {
+            "id": 1,
+            "type": "NN"
+        },
+        {
+            "id": 2,
+            "type": "NN"
+        }
+    ],
+
+    "links": [
+        {
+            "src": 100,
+            "dst": 1
+        },
+        {
+            "src": 1,
+            "dst": 101
+        },
+        {
+            "src": 101,
+            "dst": 2
+        },
+        {
+            "src": 2,
+            "dst": 102
+        }
+    ],
+
+    "streams": [
+        {
+            "id": 3,
+            "src": 100,
+            "dst": 101,
+            "plant_id": 1,
+            "type": "tt",
+            "release_time": 0,
+            "period": 0.010,
+            "deadline": 0.005
+        },
+        {
+            "id": 4,
+            "src": 101,
+            "dst": 102,
+            "plant_id": 1,
+            "type": "tt",
+            "release_time": 0,
+            "triggered_by": 3,
+            "deadline": 0.005
+        }
+    ],
+
+    "modes": {
+        "2": { "name": "moving2", "streams": [3, 4], "schedule_id": 2 }
+    },
+
+    "schedules": {
+        "2": [
+            { "prob": 0.99, "delay": 0.003 },
+            { "prob": 0.01, "delay": 0.004 }
+        ]
+    },
+
+    "mode_switch":[
+        [2, 0]
+    ],
+
+    "link_delay": [
+        { "prob": 0.95, "delay": 0.001},
+        { "prob": 0.05, "delay": 0.001}
+    ],
+
+    "preconditions": {
+        "network_nodes": {
+            "3": {
+                "rate": 0.01
+            },
+            "4": {
+                "rate": 0.01
+            }
+        }
+    },
+
+    "delivery_constraints": [
+        {
+            "mode_id": 2,
+            "stream_id": 3,
+            "min_packets": 6,
+            "window_size": 3
+        },
+        {
+            "mode_id": 2,
+            "stream_id": 4,
+            "min_packets": 6,
+            "window_size": 3
+        }
+    ]    
+}
