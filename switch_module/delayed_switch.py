@@ -41,7 +41,7 @@ class DelayedSwitch(Switch):
         switch_time = deque()
         
         for _id, time in mode_switch:
-            switch_time.append([_id, time+0.150])
+            switch_time.append([_id, time+1.550])
         return switch_time
 
     def _calculate_app_switch(self, mode_switch):

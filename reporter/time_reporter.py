@@ -267,7 +267,7 @@ class TimesReporter(Reporter):
             filename = os.path.join(output_dir, f"plant{plant_id}_trace.csv")
             with open(filename, mode='w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(["# t", "event_type", "mode", "packet_id", "stream_id"])
+                writer.writerow(["t", "event_type", "mode", "packet_id", "stream_id"])
                 for event in events:
                     writer.writerow(event)
 
