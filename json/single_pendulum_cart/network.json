@@ -47,14 +47,16 @@
         "2": {"name": "moving2", "streams": [3, 4], "schedule_id": 2}
     },
     "schedules": {
-        "1": [
-            {"prob": 0.95, "delay": 0.008},
-            {"prob": 0.05, "delay": 0.009}
-        ],
-        "2": [
-            {"prob": 0.95, "delay": 0.003},
-            {"prob": 0.05, "delay": 0.004}
-        ]
+        "1": {
+            "pattern": [1, 0, 0, 0, 0, 0],
+            "hit_delay": 0.004,
+            "miss_delay": 0.009
+        },
+        "2": {
+            "pattern": [1, 0, 0],
+            "hit_delay": 0.003,
+            "miss_delay": 0.004
+        }
     },
     "mode_switch": [
         [1, 0],
@@ -73,8 +75,8 @@
         }
     },
     "delivery_constraints": [
-        {"mode_id": 1, "stream_id": 1, "min_packets": 2, "window_size": 3},
-        {"mode_id": 1, "stream_id": 2, "min_packets": 2, "window_size": 3},
+        {"mode_id": 1, "stream_id": 1, "min_packets": 7, "window_size": 3},
+        {"mode_id": 1, "stream_id": 2, "min_packets": 7, "window_size": 3},
         {"mode_id": 2, "stream_id": 3, "min_packets": 3, "window_size": 3},
         {"mode_id": 2, "stream_id": 4, "min_packets": 3, "window_size": 3}
     ]

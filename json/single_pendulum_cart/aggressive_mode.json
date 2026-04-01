@@ -65,14 +65,15 @@
     ],
 
     "modes": {
-        "2": { "name": "moving2", "streams": [3, 4], "schedule_id": 2 }
+        "2": { "name": "moving2", "streams": [3, 4], "schedule_id": 2}
     },
 
     "schedules": {
-        "2": [
-            { "prob": 0.99, "delay": 0.003 },
-            { "prob": 0.01, "delay": 0.004 }
-        ]
+        "2": {
+            "pattern": [1, 0, 0],
+            "hit_delay": 0.003,
+            "miss_delay": 0.004
+        }
     },
 
     "mode_switch":[
@@ -99,13 +100,13 @@
         {
             "mode_id": 2,
             "stream_id": 3,
-            "min_packets": 6,
+            "min_packets": 3,
             "window_size": 3
         },
         {
             "mode_id": 2,
             "stream_id": 4,
-            "min_packets": 6,
+            "min_packets": 3,
             "window_size": 3
         }
     ]    
