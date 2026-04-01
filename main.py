@@ -176,6 +176,11 @@ def generate_nw_function(sched, precondition_rate):
     """
         method to simulate the network delay based on the schedule guarantee from json
     """
+    cyclic_counters = {}
+
+    def get_counter_key(mode_id, stream_id):
+        return (str(mode_id), str(stream_id))
+    
     def delay_function(mode, p):
         # TT network: streams not scheduled in the current network mode are dropped
         if p.stream_id not in mode.streams:
@@ -194,11 +199,20 @@ def generate_nw_function(sched, precondition_rate):
             return [SimToken(mode), None]
 
         # Avoid the hard coded index usage
-        if rand <= sched.get(mode_id)[0]["prob"]:
-            delay =  sched.get(mode_id)[0]["delay"]
+        # if rand <= sched.get(mode_id)[0]["prob"]:
+        #     delay =  sched.get(mode_id)[0]["delay"]
+        # else:
+        #     delay = sched.get(mode_id)[1]["delay"]
+        mode_sched = sched.get(mode_id)
+        pattern = mode_sched.get("pattern")
+        k = len(pattern)
+        key = get_counter_key(mode_id, st_id)
+        next_position = cyclic_counters.get(key, 0)
+        if pattern[next_position%k] == 1:
+            delay = mode_sched.get("hit_delay")
         else:
-            delay = sched.get(mode_id)[1]["delay"]
-
+            delay = mode_sched.get("miss_delay")
+        cyclic_counters[key] = (next_position + 1) % k
         return [
             SimToken(mode),
             SimToken(Packet(
@@ -208,6 +222,19 @@ def generate_nw_function(sched, precondition_rate):
                 mode_seq=p.mode_seq
             ), delay=delay)
         ]
+    
+    def reset_counter(mode_id, stream_id):
+        key = get_counter_key(mode_id, stream_id)
+        cyclic_counters[key] = 0
+    
+    def set_counter(mode_id, stream_id, position):
+        key = get_counter_key(mode_id, stream_id)
+        cyclic_counters[key] = position% len(sched.get(str(mode_id)).get("pattern"))
+
+    delay_function.reset_counter = reset_counter
+    delay_function.set_counter = set_counter
+    delay_function.cyclic_counters = cyclic_counters
+
     return delay_function
 
 
@@ -301,6 +328,7 @@ def build_petri_net(
         if st.triggered_by is not None
     }
 
+    nw_function = generate_nw_function(sched, precondition_rate)
     # Pre-compute which stream IDs have a triggered child stream.
     # Only these streams can rely on the triggered child's generate_event
     # to mark their done place. All others need an explicit done_event.
@@ -309,7 +337,7 @@ def build_petri_net(
         for st in streams.values()
         if st.triggered_by is not None
     }
-
+    
     places[NETWORK_PLACE] = defaultdict(dict)
     places[STREAM_PLACE] = defaultdict(dict)
     for stream_id, stream in streams.items():
@@ -431,7 +459,7 @@ def build_petri_net(
                     places[NETWORK_PLACE][src.node_id].mode,
                     places[NETWORK_PLACE][dest.node_id].node
                 ],
-                behavior=generate_nw_function(sched, precondition_rate),
+                behavior=nw_function,
                 # guard=accept_nn_condition(allowed),
                 name = event_name
             )
@@ -468,7 +496,7 @@ def build_petri_net(
                         )
 
     
-    return places, generate_events, done_events
+    return places, generate_events, done_events, nw_function
 
 
 def run_simulation(nodes, 
@@ -494,7 +522,7 @@ def run_simulation(nodes,
     :param sched: Description
     """
     network = SimProblem()
-    places, generate_events, done_events = build_petri_net(
+    places, generate_events, done_events, nw_function = build_petri_net(
         network,
         nodes,
         modes,
@@ -536,10 +564,18 @@ def run_simulation(nodes,
         places=places,
         nodes=nodes,
         mode_switch=mode_switch,
+        nw_function=nw_function,
+        sched=sched,
+        trigger_config={
+            "mode_id": current_mode_id,
+            "stream_id": 2,
+            "trigger_at": 4,
+            "next_mode": 0,
+            "delta": 0.020
+        }
     )
     active_model = True
 
-    # Visualisation(network).show()
     while network.clock < int(sim_time) and active_model:
         bindings = network.bindings()
         if sync_switch.check_app_switch(network_clock=network.clock):
@@ -548,9 +584,7 @@ def run_simulation(nodes,
         if sync_switch.check_net_switch(network_clock=network.clock):
             sync_switch.net_switch(network_clock=network.clock)
             bindings = network.bindings()
-            
-        
-        # logger.info(f"{bindings} {network.clock}")
+
         if len(bindings) > 0:
             timed_binding = network.binding_priority(bindings)
             network.fire(timed_binding)
@@ -559,7 +593,7 @@ def run_simulation(nodes,
         else:
             active_model = False
 
-    return reporter    
+    return reporter
 
 def main():
     """
@@ -635,7 +669,16 @@ def main():
         logger.info(f"report for {switch_class.name}")
         reporter.e2e_validate()
         reporter.validate_consecutive_deadline_miss()
+        transitions = reporter.get_transition_window()
         reporter.write()
+
+        print(transitions)
+        for t in transitions:
+            print(f"Mode {t['from_mode']} to {t['to_mode']}")
+            print(f"  Last hit old mode:  {t['last_hit_old']}ms")
+            print(f"  First hit new mode: {t['first_hit_new']}ms")
+            print(f"  Measured window:    {t['measured_window']}ms")
+
 
         # Build plant_streams mapping for dual-pendulum trace generation
         plant_streams = defaultdict(lambda: {'sensor': [], 'control': []})
