@@ -183,6 +183,47 @@ class TimesReporter(Reporter):
 
         return len(set(results.values())) > 1
 
+
+    def get_transition_window(self):
+        all_packets = []
+            
+        for (mode_seq, stream_id), packets in self.end_to_end.items():
+            for seq_id, times in packets.items():
+                if "complete_time" not in times:
+                    continue
+                
+                all_packets.append({
+                    "mode_id": mode_seq.split("@")[0],
+                    "stream_id": stream_id,
+                    "seq_id": seq_id,
+                    "complete_time": times["complete_time"],
+                })
+        
+        if len(all_packets) == 0:
+            return []
+        
+        all_packets.sort(key=lambda p: p["complete_time"])
+        
+        transitions = []
+        current_mode = all_packets[0]["mode_id"]
+        last_hit = all_packets[0]["complete_time"]
+        
+        for pkt in all_packets[1:]:
+            if pkt["mode_id"] == current_mode:
+                last_hit = pkt["complete_time"]
+            else:
+                transitions.append({
+                    "from_mode": current_mode,
+                    "to_mode": pkt["mode_id"],
+                    "last_hit_old": last_hit,
+                    "first_hit_new": pkt["complete_time"],
+                    "measured_window": pkt["complete_time"] - last_hit,
+                })
+                current_mode = pkt["mode_id"]
+                last_hit = pkt["complete_time"]
+        
+        return transitions
+
     def write(self, output_dir="simulation_results"):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
