@@ -9,15 +9,20 @@ class Switch(ABC):
     Docstring for Base switch class
     """
 
-    def __init__(self, streams, modes, places, nodes, mode_switch):
+    def __init__(self, streams, modes, places, nodes, mode_switch, nw_function, sched, trigger_config):
         self.modes = modes
         self.streams = streams
         self.places = places
         self.nodes = nodes
+        self.nw_function = nw_function
+        self.sched = sched
+        self.trigger_config = trigger_config
+
         self.app_mode_switch = self._calculate_app_switch(mode_switch)
         self.net_mode_switch = self._calculate_net_switch(mode_switch)
         self.next_app_mode = self.app_mode_switch.popleft() if len(self.app_mode_switch) > 0 else None
         self.next_net_mode = self.net_mode_switch.popleft() if len(self.net_mode_switch) > 0 else None
+        self.is_app_switch = False
 
     @abstractmethod
     def _calculate_app_switch(self, mode_switch):
@@ -27,17 +32,47 @@ class Switch(ABC):
     def _calculate_net_switch(self, mode_switch):
         pass
 
+    def _get_current_mode_id(self):
+        # Read from your existing mode place
+        stream_id = self.trigger_config["stream_id"]
+        return self.places[STREAM_PLACE][stream_id].mode.peek().mode_id
+
     def check_app_switch(self, network_clock):
         """
             method checks if the application is ready to switch to next mode
         """
-        return self.next_app_mode is not None and self.next_app_mode[1] <= network_clock
+        # return self.next_app_mode is not None and self.next_app_mode[1] <= network_clock
+        if self.next_app_mode is None:
+            return False
+        
+        if self.next_app_mode[1] > network_clock:
+            return False
+        
+        # current_mode_id = str(self.trigger_config["mode_id"])
+        # trigger_stream = str(self.trigger_config["stream_id"])
+        # key = (current_mode_id, trigger_stream)
+        # current_pos = self.nw_function.cyclic_counters.get(key, 0)
+        
+        # if current_pos != self.trigger_config.get("trigger_at"):
+        #     return False
+
+        self.nw_function.set_counter(self.next_app_mode[0], 4, self.trigger_config["next_mode"])
+        self.is_app_switch = True
+        return True
 
     def check_net_switch(self, network_clock):
         """
             method checks if the network is ready to switch to next mode
         """
-        return self.next_net_mode is not None and self.next_net_mode[1] <= network_clock
+        if self.next_net_mode is None:
+            return False
+
+        if self.next_net_mode[1] > network_clock:
+            return False
+        
+        if not self.is_app_switch:
+            return False
+        return True
 
     def app_switch(self, network_clock):
         """
