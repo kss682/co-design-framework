@@ -208,20 +208,26 @@ def generate_nw_function(sched, precondition_rate):
         k = len(pattern)
         key = get_counter_key(mode_id, st_id)
         next_position = cyclic_counters.get(key, 0)
+        cyclic_counters[key] = (next_position + 1) % k
         if pattern[next_position%k] == 1:
             delay = mode_sched.get("hit_delay")
+            return [
+                SimToken(mode),
+                SimToken(Packet(
+                    stream_id=p.stream_id,
+                    seq_id=p.seq_id,
+                    packet_time=p.packet_time+delay,
+                    mode_seq=p.mode_seq
+                ), delay=delay)
+            ]
         else:
             delay = mode_sched.get("miss_delay")
-        cyclic_counters[key] = (next_position + 1) % k
-        return [
-            SimToken(mode),
-            SimToken(Packet(
-                stream_id=p.stream_id,
-                seq_id=p.seq_id,
-                packet_time=p.packet_time+delay,
-                mode_seq=p.mode_seq
-            ), delay=delay)
-        ]
+            return [
+                SimToken(mode),
+                None
+            ]
+        
+
     
     def reset_counter(mode_id, stream_id):
         key = get_counter_key(mode_id, stream_id)
@@ -509,7 +515,8 @@ def run_simulation(nodes,
                    link_delays, 
                    precondition_rate,
                    delivery_constraints,
-                   sim_time
+                   sim_time,
+                   delta
                     ):
     """
     Docstring for run_simulation
@@ -569,13 +576,14 @@ def run_simulation(nodes,
         trigger_config={
             "mode_id": current_mode_id,
             "stream_id": 2,
-            "trigger_at": 4,
-            "next_mode": 0,
-            "delta": 0.020
+            "trigger_at": 7,
+            "next_mode": 4,
+            "delta": float(delta)
         }
     )
     active_model = True
 
+    # Visualisation(network).show()
     while network.clock < int(sim_time) and active_model:
         bindings = network.bindings()
         if sync_switch.check_app_switch(network_clock=network.clock):
@@ -623,6 +631,11 @@ def main():
         "--benchmark",
         required=False
     )
+    parser.add_argument(
+        "-d",
+        "--delta",
+        required=False
+    )
     args = parser.parse_args()
     nw_model_file = args.file
     logger.info("fetching network model from %s", nw_model_file)
@@ -664,7 +677,8 @@ def main():
             link_delays=link_delays,
             precondition_rate=precondition_rate,
             delivery_constraints=delivery_constraints,
-            sim_time=args.time
+            sim_time=args.time,
+            delta=args.delta
         )
         logger.info(f"report for {switch_class.name}")
         reporter.e2e_validate()
