@@ -1,0 +1,63 @@
+{
+    "nodes": [
+        {"id": 100, "type": "ES"},
+        {"id": 101, "type": "ES"},
+        {"id": 1, "type": "NN"}
+    ],
+    "links": [
+        {"src": 100, "dst": 1},
+        {"src": 1, "dst": 101}
+    ],
+    "streams": [
+        {
+            "id": 1, "src": 100, "dst": 101,
+            "plant_id": 1, "type": "tt",
+            "release_time": 0,
+            "period": 0.020,
+            "deadline": 0.020
+        },
+        {
+            "id": 3, "src": 100, "dst": 101,
+            "plant_id": 1, "type": "tt",
+            "release_time": 0,
+            "period": 0.010,
+            "deadline": 0.010
+        }
+    ],
+    "modes": {
+        "1": {"name": "moving1", "streams": [1], "schedule_id": 1},
+        "2": {"name": "moving2", "streams": [3], "schedule_id": 2}
+    },
+    "schedules": {
+        "1": {
+            "pattern": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "hit_delay": 0.019,
+            "miss_delay": 0.021
+        },
+        "2": {
+            "pattern": [1, 0, 0, 0, 0],
+            "hit_delay": 0.009,
+            "miss_delay": 0.011
+        }
+    },
+    "mode_switch": [
+        [1, 0],
+        [2, 0.5]
+    ],
+    "link_delay": [
+        {"prob": 0.95, "delay": 0.000},
+        {"prob": 0.05, "delay": 0.000}
+    ],
+    "preconditions": {
+        "network_nodes": {
+            "1": {"rate": 0.01},
+            "2": {"rate": 0.01},
+            "3": {"rate": 0.01},
+            "4": {"rate": 0.01}
+        }
+    },
+    "delivery_constraints": [
+        {"mode_id": 1, "stream_id": 1, "min_packets": 8, "window_size": 3},
+        {"mode_id": 2, "stream_id": 3, "min_packets": 4, "window_size": 3}
+    ]
+}

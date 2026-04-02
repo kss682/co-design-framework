@@ -9,15 +9,7 @@
             "type": "ES"
         },
         {
-            "id": 102,
-            "type": "ES"
-        },
-        {
             "id": 1,
-            "type": "NN"
-        },
-        {
-            "id": 2,
             "type": "NN"
         }
     ],
@@ -30,14 +22,6 @@
         {
             "src": 1,
             "dst": 101
-        },
-        {
-            "src": 101,
-            "dst": 2
-        },
-        {
-            "src": 2,
-            "dst": 102
         }
     ],
 
@@ -50,29 +34,19 @@
             "type": "tt",
             "release_time": 0,
             "period": 0.010,
-            "deadline": 0.005
-        },
-        {
-            "id": 4,
-            "src": 101,
-            "dst": 102,
-            "plant_id": 1,
-            "type": "tt",
-            "release_time": 0,
-            "triggered_by": 3,
-            "deadline": 0.005
+            "deadline": 0.010
         }
     ],
 
     "modes": {
-        "2": { "name": "moving2", "streams": [3, 4], "schedule_id": 2}
+        "2": { "name": "moving2", "streams": [3], "schedule_id": 2}
     },
 
     "schedules": {
         "2": {
             "pattern": [1, 0, 0, 0],
-            "hit_delay": 0.004,
-            "miss_delay": 0.005
+            "hit_delay": 0.009,
+            "miss_delay": 0.010
         }
     },
 
@@ -100,13 +74,13 @@
         {
             "mode_id": 2,
             "stream_id": 3,
-            "min_packets": 3,
+            "min_packets": 4,
             "window_size": 3
         },
         {
             "mode_id": 2,
             "stream_id": 4,
-            "min_packets": 3,
+            "min_packets": 4,
             "window_size": 3
         }
     ]    

@@ -3,3 +3,4 @@ simulation_results/
 .ipynb_checkpoints/
 results/
 .DS_Store
+benchmark/
