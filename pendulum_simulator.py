@@ -58,15 +58,15 @@ def run_event_simulation(trace_file, A, B, gains_dict, x0, target_x):
             t_curr = t_event
         
         if event == 'plantsend':
-            K_active = gains_dict[mode]
             x_sampled = x_curr.copy()
             
         elif event == 'controllerreceive':
+            K_active = gains_dict[mode]
             error = target_x - x_sampled
             u_pending = np.dot(K_active, error)
-            
-        elif event == 'plantreceive':
             u_active = u_pending
+        # elif event == 'plantreceive':
+            
         
         history.append([t_curr, *x_curr])
     
@@ -88,7 +88,7 @@ def main():
     
     file_name = args.file
 
-    initial_x = [5, 0.0, 0.0, 0.0] 
+    initial_x = [5.0, 0.0, 0.0, 0.0] 
     target_x = [0.0, 0.0, 0.0, 0.0]
 
     # lqr gains for mode 1 and mode 2
@@ -104,6 +104,8 @@ def main():
         target_x
     )
 
+    # max_deviation = sim_results['theta'].abs().idxmax()
+    # print(sim_results.loc[max_deviation])
     results_file = file_name.split('.')[0] + '_states.csv'
     sim_results.to_csv(results_file, sep=',', index=False)
 
