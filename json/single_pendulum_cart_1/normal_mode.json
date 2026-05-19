@@ -35,8 +35,8 @@
 
     "schedules": {
         "1": {
-            "pattern": [1, 0, 0],
-            "hit_delay": 0.0019,
+            "pattern": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "hit_delay": 0.0018,
             "miss_delay": 0.021
         }
     },
@@ -46,8 +46,8 @@
     ],
 
     "link_delay": [
-        { "prob": 0.95, "delay": 0.005},
-        { "prob": 0.05, "delay": 0.005}
+        { "prob": 0.99, "delay": 0.0005},
+        { "prob": 0.01, "delay": 0.001}
     ],
 
     "preconditions": {

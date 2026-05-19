@@ -1,0 +1,31 @@
+ {
+    "nodes": [
+      {"id": 100, "type": "ES"},
+      {"id": 101, "type": "ES"},
+      {"id": 1,   "type": "NN"}
+    ],
+    "links": [
+      {"src": 100, "dst": 1},
+      {"src": 1,   "dst": 101}
+    ],
+    "streams": [
+      {"id": 1, "src": 100, "dst": 101,
+       "period": 0.020, "deadline": 0.020}
+    ],
+    "modes": {
+      "1": {"streams": [1], "schedule_id": 1}
+    },
+    "schedules": {
+      "1": {"pattern": [1, 0], "hit_delay": 0.019}
+    },
+    "mode_switch":[
+        [1, 0]
+    ],
+    "link_delay": [
+      {"prob": 1.0, "delay": 0.001}
+    ],
+    "delivery_constraints": [
+      {"mode_id": 1, "stream_id": 1,
+       "min_packets": 3, "window_size": 4}
+    ]
+  }

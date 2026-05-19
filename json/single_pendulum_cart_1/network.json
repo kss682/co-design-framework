@@ -30,23 +30,23 @@
     },
     "schedules": {
         "1": {
-            "pattern": [1, 0, 0, 0, 0, 0, 0, 0, 0],
-            "hit_delay": 0.019,
+            "pattern": [1, 0, 0, 0],
+            "hit_delay": 0.018,
             "miss_delay": 0.021
         },
         "2": {
-            "pattern": [1, 0, 0, 0, 0],
-            "hit_delay": 0.009,
+            "pattern": [1, 0],
+            "hit_delay": 0.008,
             "miss_delay": 0.011
         }
     },
     "mode_switch": [
-        [1, 0],
-        [2, 0.5]
+        [2, 0],
+        [1, 0.020]
     ],
     "link_delay": [
-        {"prob": 0.95, "delay": 0.000},
-        {"prob": 0.05, "delay": 0.000}
+        {"prob": 0.99, "delay": 0.0005},
+        {"prob": 0.01, "delay": 0.001}
     ],
     "preconditions": {
         "network_nodes": {
@@ -57,7 +57,7 @@
         }
     },
     "delivery_constraints": [
-        {"mode_id": 1, "stream_id": 1, "min_packets": 8, "window_size": 3},
-        {"mode_id": 2, "stream_id": 3, "min_packets": 4, "window_size": 3}
+        {"mode_id": 1, "stream_id": 1, "min_packets": 7, "window_size": 3},
+        {"mode_id": 2, "stream_id": 3, "min_packets": 3, "window_size": 3}
     ]
 }
