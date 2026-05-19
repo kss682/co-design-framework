@@ -191,12 +191,12 @@ def generate_nw_function(sched, precondition_rate):
         rand = random.random()
         mode_id = str(mode.mode_id)
 
-        expected = precondition_rate.get(str(st_id), {}).get("rate", None)
-        if expected is None:
-            return [SimToken(mode), None]
+        # expected = precondition_rate.get(str(st_id), {}).get("rate", None)
+        # if expected is None:
+        #     return [SimToken(mode), None]
 
-        if now > expected:
-            return [SimToken(mode), None]
+        # if now > expected:
+        #     return [SimToken(mode), None]
 
         # Avoid the hard coded index usage
         # if rand <= sched.get(mode_id)[0]["prob"]:
@@ -575,9 +575,9 @@ def run_simulation(nodes,
         sched=sched,
         trigger_config={
             "mode_id": current_mode_id,
-            "stream_id": 2,
-            "trigger_at": 7,
-            "next_mode": 4,
+            "stream_id": 1,
+            "trigger_at": 1,
+            "next_mode": 1,
             "delta": float(delta)
         }
     )
@@ -636,6 +636,13 @@ def main():
         "--delta",
         required=False
     )
+    parser.add_argument(
+        "-sw",
+        "--switch-time",
+        required=False,
+        type=float,
+        help="Override mode_switch time (e.g. 0.04)"
+    )
     args = parser.parse_args()
     nw_model_file = args.file
     logger.info("fetching network model from %s", nw_model_file)
@@ -664,7 +671,14 @@ def main():
      link_delays,
      precondition_rate,
      delivery_constraints) = load_network(data=data)
-    
+
+    # Override switch time if provided via CLI
+    if args.switch_time is not None:
+        for i in range(len(mode_switch)):
+            if mode_switch[i][1] > 0:
+                mode_switch[i][1] = args.switch_time
+                logger.info(f"Override switch time to {args.switch_time}s for mode {mode_switch[i][0]}")
+
     if args.benchmark is None:
         reporter = run_simulation(
             nodes=nodes,
@@ -684,14 +698,16 @@ def main():
         reporter.e2e_validate()
         reporter.validate_consecutive_deadline_miss()
         transitions = reporter.get_transition_window()
+        transitions = reporter.validate_transition(transitions)
         reporter.write()
 
-        print(transitions)
         for t in transitions:
             print(f"Mode {t['from_mode']} to {t['to_mode']}")
             print(f"  Last hit old mode:  {t['last_hit_old']}ms")
             print(f"  First hit new mode: {t['first_hit_new']}ms")
             print(f"  Measured window:    {t['measured_window']}ms")
+            print(f"  Transition status:  {t['transition_status']}")
+            print(f"  Bound:              {t['bound']}s")
 
 
         # Build plant_streams mapping for dual-pendulum trace generation
@@ -725,7 +741,8 @@ def main():
                 link_delays=link_delays,
                 precondition_rate=precondition_rate,
                 delivery_constraints=delivery_constraints,
-                sim_time=args.time
+                sim_time=args.time,
+                delta=args.delta
             )
             logger.info(f"report for {switch_class.name}")
             reporter.e2e_validate()

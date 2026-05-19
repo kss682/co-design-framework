@@ -56,7 +56,12 @@ class Switch(ABC):
         # if current_pos != self.trigger_config.get("trigger_at"):
         #     return False
 
-        self.nw_function.set_counter(self.next_app_mode[0], 4, self.trigger_config["next_mode"])
+        # Set the schedule counter for the next mode's streams to the desired start position
+        next_mode_id = self.next_app_mode[0]
+        next_mode = self.modes.get(next_mode_id)
+        start_pos = self.trigger_config.get("next_mode", 0)
+        for st_id in next_mode.streams:
+            self.nw_function.set_counter(next_mode_id, st_id, start_pos)
         self.is_app_switch = True
         return True
 

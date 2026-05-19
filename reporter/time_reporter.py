@@ -153,36 +153,68 @@ class TimesReporter(Reporter):
             deadline_miss_threshold = self.delivery_constraints.get((mode_id, stream_id)).min_packets
 
             violated_count = 0
+            max_consecutive = 0
             status = self.delivery_status.get((mode_seq, stream_id))
 
             for i in range(len(status)):
                 if status[i] == "Satisfied":
+                    max_consecutive = max(max_consecutive, violated_count)
                     violated_count = 0
-                    continue
-                
-                if status[i] == "Violated":
-                    violated_count+=1
-                
-                if violated_count > deadline_miss_threshold:
-                    results[(mode_seq, stream_id)] = "Violated"
-                    break
-            
-            if results.get((mode_seq, stream_id), None) is not None:
-                continue
+                else:
+                    violated_count += 1
 
-            results[(mode_seq, stream_id)] = "Satisfied"
+            # Do NOT include trailing misses (incomplete cycle)
+            # violated_count at this point is the trailing run — discard it
+
+            if max_consecutive > deadline_miss_threshold:
+                results[(mode_seq, stream_id)] = "Violated"
+            else:
+                results[(mode_seq, stream_id)] = "Satisfied"
 
         for key, status in results.items():
             mode_seq, stream_id = key
             mode_id = int(mode_seq.split('@')[0])
-
             min_packets = self.delivery_constraints.get((mode_id, stream_id)).min_packets
-
             logger.info(f"Delivery constraint of {min_packets} consecutive deadline miss for mode {mode_seq} with stream {stream_id} is {status}")
 
 
         return len(set(results.values())) > 1
 
+
+    def validate_transition(self, transitions):
+        """
+        Check the sufficient condition during mode switch:
+        measured_window <= min{S_app_i * period_i, S_app_j * period_j}
+        """
+        results = []
+        for t in transitions:
+            from_mode = int(t["from_mode"])
+            to_mode = int(t["to_mode"])
+            measured_window = t["measured_window"]
+
+            bounds = []
+            for mode_id in [from_mode, to_mode]:
+                for (m_id, st_id), constraint in self.delivery_constraints.items():
+                    if m_id == mode_id:
+                        period = self.streams.get(st_id).period
+                        bounds.append(constraint.min_packets * period)
+
+            if not bounds:
+                t["transition_status"] = "Unknown"
+                t["bound"] = None
+            else:
+                bound = min(bounds)
+                status = "Satisfied" if measured_window <= bound else "Violated"
+                t["transition_status"] = status
+                t["bound"] = bound
+                logger.info(
+                    f"Transition {from_mode}->{to_mode}: "
+                    f"window={measured_window:.4f}s, bound={bound:.4f}s, "
+                    f"status={status}"
+                )
+
+            results.append(t)
+        return results
 
     def get_transition_window(self):
         all_packets = []
