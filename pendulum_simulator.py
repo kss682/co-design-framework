@@ -50,10 +50,16 @@ def run_event_simulation(trace_file, A, B, gains_dict, x0, target_x):
         mode = row['mode']
         
         if t_event > t_curr:
+            t_grid = np.arange(t_curr, t_event, 0.001)
+            t_grid = t_grid[t_grid < t_event]
+            t_grid = np.append(t_grid, t_event)
             sol = solve_ivp(
                 lambda t, y: A @ y + (B @ [u_active]).flatten(),
-                [t_curr, t_event], x_curr, method='RK45'
+                [t_curr, t_event], x_curr, method='RK45',
+                t_eval=t_grid
             )
+            for i in range(sol.t.shape[0] - 1):
+                history.append([sol.t[i], *sol.y[:, i]])
             x_curr = sol.y[:, -1]
             t_curr = t_event
         
@@ -80,18 +86,39 @@ def main():
         prog="Pendulum simulator",
     )
     parser.add_argument(
-        "-f", 
+        "-f",
         "--file",
         required=True
     )
+    parser.add_argument(
+        "-x",
+        "--x0",
+        required=False,
+        help="Initial state as comma-separated values, e.g. '0.01,0.0,0.1,0.5'"
+    )
+    parser.add_argument(
+        "-e",
+        "--epsilon",
+        required=False,
+        type=float,
+        default=1.0,
+        help="Scale factor for initial state"
+    )
     args = parser.parse_args()
-    
+
     file_name = args.file
 
-    initial_x = [5.0, 0.0, 0.0, 0.0] 
+    if args.x0:
+        initial_x = [float(v) for v in args.x0.split(",")]
+    else:
+        initial_x = [-0.01505422, -0.08406382,  0.17563262,  0.98074453]
+        # initial_x = [5, 0, 0, 0]
+
+    initial_x = [v * args.epsilon for v in initial_x]
     target_x = [0.0, 0.0, 0.0, 0.0]
 
     # lqr gains for mode 1 and mode 2
+    # -23.770885 	-21.232774 	-88.144034 	-18.446548
     gains = {
         1: np.array([-0.866502, 	-1.688026, 	-18.727439, 	-3.592953]),
         2: np.array([-23.770885, 	-21.232774, 	-88.144034, 	-18.446548])
