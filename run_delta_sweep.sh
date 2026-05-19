@@ -3,11 +3,11 @@
 # =============================================================================
 # Delta Sweep Script
 # 
-# Iterates delta from 0.010 to 0.040 with 0.005 step
+# Iterates delta across the sufficient condition boundary
 # =============================================================================
 
-# Configuration
-JSON_FILE="json/single_pendulum_cart_1/network.json"
+# Configuration — pass JSON file as argument or use default
+JSON_FILE="${1:-json/single_pendulum_cart_1/network.json}"
 SIM_TIME=20
 TRACE_FILE="simulation_results/plant1_trace.csv"
 STATES_FILE="simulation_results/plant1_trace_states.csv"
@@ -25,17 +25,20 @@ echo "=============================================="
 echo "Delta Sweep"
 echo "=============================================="
 echo "JSON file:    $JSON_FILE"
-echo "Delta range:  0.010 to 0.040 (step 0.005)"
+echo "Delta range:  0.010 to 0.250 (step 0.005)"
 echo "Results file: $RESULTS_FILE"
 echo "=============================================="
 
-# Function to extract max absolute theta
+# Function to extract max absolute theta from a given start time onward
+# Usage: extract_max_theta <csv_file> [start_time]
+# If start_time is provided, only considers rows where t >= start_time
 extract_max_theta() {
     local csv_file="$1"
+    local start_time="${2:-0}"
     if [ -f "$csv_file" ]; then
         tail -n +2 "$csv_file" | \
-            awk -F',' '{
-                if (NF >= 4 && $4 ~ /^-?[0-9]/) {
+            awk -F',' -v t_start="$start_time" '{
+                if (NF >= 4 && $1 >= t_start && $4 ~ /^-?[0-9]/) {
                     val = ($4 < 0) ? -$4 : $4
                     if (val > max) max = val
                 }
@@ -67,8 +70,8 @@ extract_first_hit_time(){
     echo "$output" | grep -i "First hit new mode:" | awk -F':' '{print $2}' | sed 's/ms//g' | tr -d ' ' | head -1
 }
 
-# Iterate delta from 0.010 to 0.100 with step 0.010
-for delta in $(seq 0.010 0.010 0.100); do
+# 5ms steps from 10ms to 250ms
+for delta in $(seq 0.010 0.005 0.250); do
     echo ""
     echo "Running with delta = $delta"
     echo "----------------------------------------------"
@@ -80,13 +83,19 @@ for delta in $(seq 0.010 0.010 0.100); do
     main_output=$(python3 main.py -f "$JSON_FILE" -s Delay -t "$SIM_TIME" -d "$delta" 2>&1)
     main_exit_code=$?
     
-    # Determine status
-    if echo "$main_output" | grep -qi "violated"; then
-        status="violated"
-    elif echo "$main_output" | grep -qi "satisfied"; then
-        status="satisfied"
+    # Determine transition status (from the sufficient condition check)
+    transition_status=$(echo "$main_output" | grep -i "Transition status:" | awk -F':' '{print $2}' | tr -d ' ' | head -1)
+    if [ -z "$transition_status" ]; then
+        # Fallback to old method
+        if echo "$main_output" | grep -qi "violated"; then
+            status="violated"
+        elif echo "$main_output" | grep -qi "satisfied"; then
+            status="satisfied"
+        else
+            status="unknown"
+        fi
     else
-        status="unknown"
+        status=$(echo "$transition_status" | tr '[:upper:]' '[:lower:]')
     fi
     
     # Extract measured window
@@ -116,7 +125,7 @@ for delta in $(seq 0.010 0.010 0.100); do
         python3 pendulum_simulator.py -f "$TRACE_FILE"
         sim_exit_code=$?
         
-        max_theta=$(extract_max_theta "$STATES_FILE")
+        max_theta=$(extract_max_theta "$STATES_FILE" "$last_hit_time")
         
         if [ $sim_exit_code -eq 0 ]; then
             echo "Pendulum sim - Max |θ|: $max_theta rad"

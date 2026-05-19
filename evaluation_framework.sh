@@ -1,123 +1,121 @@
 #!/bin/bash
 
 # Base JSON configuration
-# BASE_JSON='{
-#     "nodes": [
-#         {"id": 100, "type": "ES"},
-#         {"id": 101, "type": "ES"},
-#         {"id": 1, "type": "NN"}
-#     ],
-#     "links": [
-#         {"src": 100, "dst": 1},
-#         {"src": 1, "dst": 101}
-#     ],
-#     "streams": [
-#         {
-#             "id": 3,
-#             "src": 100,
-#             "dst": 101,
-#             "plant_id": 1,
-#             "type": "tt",
-#             "release_time": 0,
-#             "period": 0.010,
-#             "deadline": 0.010
-#         }
-#     ],
-#     "modes": {
-#         "2": {"name": "moving2", "streams": [3], "schedule_id": 2}
-#     },
-#     "schedules": {
-#         "2": {
-#             "pattern": [1],
-#             "hit_delay": 0.009,
-#             "miss_delay": 0.010
-#         }
-#     },
-#     "mode_switch": [[2, 0]],
-#     "link_delay": [
-#         {"prob": 0.95, "delay": 0.000},
-#         {"prob": 0.05, "delay": 0.000}
-#     ],
-#     "preconditions": {
-#         "network_nodes": {
-#             "3": {"rate": 0.01},
-#             "4": {"rate": 0.01}
-#         }
-#     },
-#     "delivery_constraints": [
-#         {"mode_id": 2, "stream_id": 3, "min_packets": 4, "window_size": 3},
-#         {"mode_id": 2, "stream_id": 4, "min_packets": 4, "window_size": 3}
-#     ]
-# }'
 BASE_JSON='{
     "nodes": [
-        { "id": 100, "type": "ES" },
-        { "id": 101, "type": "ES" },
-        { "id": 1, "type": "NN" }
+        {"id": 100, "type": "ES"},
+        {"id": 101, "type": "ES"},
+        {"id": 1, "type": "NN"}
     ],
-
     "links": [
-        {
-            "src": 100,
-            "dst": 1
-        },
-        {
-            "src": 1,
-            "dst": 101
-        }
+        {"src": 100, "dst": 1},
+        {"src": 1, "dst": 101}
     ],
-
     "streams": [
         {
-            "id": 1,
+            "id": 3,
             "src": 100,
             "dst": 101,
             "plant_id": 1,
             "type": "tt",
             "release_time": 0,
-            "period": 0.020,
-            "deadline": 0.020
+            "period": 0.010,
+            "deadline": 0.010
         }
     ],
-
     "modes": {
-        "1": { "name": "moving1", "streams": [1], "schedule_id": 1 }
+        "2": {"name": "moving2", "streams": [3], "schedule_id": 2}
     },
-
     "schedules": {
-        "1": {
-            "pattern": [1, 0, 0],
-            "hit_delay": 0.0019,
-            "miss_delay": 0.021
+        "2": {
+            "pattern": [1],
+            "hit_delay": 0.008,
+            "miss_delay": 0.010
         }
     },
-
-    "mode_switch":[
-        [1, 0]
-    ],
-
+    "mode_switch": [[2, 0]],
     "link_delay": [
-        { "prob": 0.95, "delay": 0.005},
-        { "prob": 0.95, "delay": 0.005}
+        {"prob": 0.99, "delay": 0.0005},
+        {"prob": 0.01, "delay": 0.001}
     ],
-
     "preconditions": {
         "network_nodes": {
-            "1": {
-                "rate": 0.01
-            }
+            "3": {"rate": 0.01}
         }
     },
-
     "delivery_constraints": [
-        {
-            "mode_id": 1,
-            "stream_id": 1,
-            "min_packets": 8,
-            "window_size": 3
-        }
-    ]    
+        {"mode_id": 2, "stream_id": 3, "min_packets": 3, "window_size": 3}
+    ]
 }'
+# BASE_JSON='{
+#     "nodes": [
+#         { "id": 100, "type": "ES" },
+#         { "id": 101, "type": "ES" },
+#         { "id": 1, "type": "NN" }
+#     ],
+
+#     "links": [
+#         {
+#             "src": 100,
+#             "dst": 1
+#         },
+#         {
+#             "src": 1,
+#             "dst": 101
+#         }
+#     ],
+
+#     "streams": [
+#         {
+#             "id": 1,
+#             "src": 100,
+#             "dst": 101,
+#             "plant_id": 1,
+#             "type": "tt",
+#             "release_time": 0,
+#             "period": 0.020,
+#             "deadline": 0.020
+#         }
+#     ],
+
+#     "modes": {
+#         "1": { "name": "moving1", "streams": [1], "schedule_id": 1 }
+#     },
+
+#     "schedules": {
+#         "1": {
+#             "pattern": [1, 0, 0],
+#             "hit_delay": 0.018,
+#             "miss_delay": 0.021
+#         }
+#     },
+
+#     "mode_switch":[
+#         [1, 0]
+#     ],
+
+#     "link_delay": [
+#         { "prob": 0.99, "delay": 0.0005},
+#         { "prob": 0.01, "delay": 0.001}
+#     ],
+
+#     "preconditions": {
+#         "network_nodes": {
+#             "1": {
+#                 "rate": 0.01
+#             }
+#         }
+#     },
+
+#     "delivery_constraints": [
+#         {
+#             "mode_id": 1,
+#             "stream_id": 1,
+#             "min_packets": 7,
+#             "window_size": 3
+#         }
+#     ]    
+# }'
 
 # Results file with timestamp
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
@@ -170,7 +168,7 @@ for num_misses in $(seq 0 10); do
         done
         pattern="[1$zeros]"
     fi
-    
+    echo $pattern
     echo ""
     echo "[$num_misses/20] Running with $num_misses consecutive misses: $pattern"
     echo "----------------------------------------------"
@@ -179,12 +177,11 @@ for num_misses in $(seq 0 10); do
     rm -rf simulation_results/*
     
     # Use jq to update the pattern in the JSON
-    echo "$BASE_JSON" | jq --argjson pat "$pattern" '.schedules."1".pattern = $pat' > "$CONFIG_FILE"
+    echo "$BASE_JSON" | jq --argjson pat "$pattern" '.schedules."2".pattern = $pat' > "$CONFIG_FILE"
     
     # Run main.py and capture output
-    main_output=$(python main.py -f "$CONFIG_FILE" -s Delay -t 20 2>&1)
+    main_output=$(python main.py -f "$CONFIG_FILE" -s Delay -t 20 --delta 0 2>&1)
     main_exit_code=$?
-    
     # Determine status (violated or satisfied)
     if echo "$main_output" | grep -qi "violated"; then
         status="violated"
