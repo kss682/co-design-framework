@@ -7,6 +7,13 @@ A Timed Colored Petri Net (TCPN) based framework for validating the co-design of
 
 In NCS, sensors, controllers, and actuators communicate over a shared network. When the system transitions between modes of operation (e.g., changing the sampling rate and controller gains), both the control parameters and the network schedule must be reconfigured. During this transition window, system safety is not guaranteed.
 
+The framework enables co-design by allowing the designer to jointly evaluate and iterate on:
+- **Control parameters**: controller gain (K), sampling period (h), and the resulting stability tolerance (S_app)
+- **Network schedule**: delivery pattern, consecutive miss guarantees (S_net), and reconfiguration delay (delta)
+- **Mode design**: number of modes, transition direction, and switch timing
+
+By simulating the Petri Net model with different configurations, the designer can verify whether the sufficient condition for safety is satisfied during mode transitions, and identify which parameters (control tuning, network schedule, or reconfiguration delay) need adjustment when it is not.
+
 This framework:
 1. Models the NCS as a Timed-Colored Petri Net with configurable network schedules
 2. Simulates mode transitions under different switching strategies (synchronized and delayed)
@@ -48,8 +55,8 @@ This framework:
 ## Installation
 
 ```bash
-git clone <repo-url>
-cd cpn-system-models
+git clone git@github.com:kss682/co-design-framework.git
+cd co-design-framework
 pip install -r requirements.txt
 ```
 
@@ -84,7 +91,7 @@ The JSON is inside the script, the system being evaluated has to be placed insid
 ### Delta Sweep (Mode Switch Evaluation)
 
 ```bash
-bash run_delta_sweep.sh json/single_pendulum_cart_1/network.json
+./run_delta_sweep.sh json/single_pendulum_cart_1/network.json
 ```
 
 Iterates delta from 10ms to 250ms, runs the Petri Net simulation and pendulum simulator for each value, and writes results to `benchmark/`.
@@ -92,12 +99,12 @@ Iterates delta from 10ms to 250ms, runs the Petri Net simulation and pendulum si
 ### Switch Time Sweep
 
 ```bash
-bash run_switch_time_sweep.sh json/single_pendulum_cart_1/network.json
+./run_switch_time_sweep.sh json/single_pendulum_cart_1/network.json
 ```
 
-Sweeps over switch timing (hit index 1-10) and delta values to analyse the effect of deferring the mode switch.
+Sweeps over switch timing (hit index 1-10) and delta values to analyze the effect of deferring the mode switch.
 
-### Plant Simulation
+### Inverted Pendulum Simulator
 
 After running the Petri Net simulation, feed the generated trace to the pendulum simulator:
 
@@ -126,7 +133,7 @@ The network model is defined in a JSON file with the following structure:
 - **S_app**: Maximum consecutive deadline misses the closed-loop system can tolerate while remaining stable, derived from spectral radius analysis
 - **Sufficient Condition**: The transition window T_worst must satisfy T_worst <= min(S_app_i * h_i, S_app_j * h_j) for safety during mode switch
 - **Switching Strategies**:
-  - *Synchronised*: Both control and network switch at the next hypercycle boundary
+  - *Synchronized*: Both control and network switch at the next hypercycle boundary
   - *Delayed*: Control switches first; network reconfigures after delay delta
 
 ## License
