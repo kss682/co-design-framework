@@ -1,0 +1,20 @@
+Abstract
+
+Network Control Systems (NCS) require the timely closure of the feedback loop while operating
+across a shared network that introduces delay and packet loss. System safety must be robust
+to these network imperfections, and substantial work has been done to derive stability bounds
+for NCS under fixed operating conditions. However, many practical systems require dynamic
+adaptation to operating conditions, either due to external disturbances or intentional switching,
+which necessitates simultaneous changes in control and network parameters. In practice, this
+switch can be triggered prematurely, resulting in a transition window during which system safety
+is not guaranteed. Previous work on switched systems focuses on control signal switching
+without considering network reconfiguration, and existing NCS stability analysis do not model
+the transition window or derive conditions for its safety. We formulate a sufficient condition that
+bounds the worst-case open-loop duration a plant can safely sustain across a mode transition
+using the network delivery guarantee, the reconfiguration delay, and the control stability tolerance.
+We develop a Timed Colored Petri Net (TCPN) validation framework that simulates packet flow,
+mode switching, and reconfiguration delay to report whether the system remains safe across
+different operating conditions. The framework is evaluated on an inverted pendulum control
+system, confirming the soundness of the sufficient condition and demonstrating the framework as
+a co-design tool to explore the trade-off between reconfiguration delay, network guarantee, and
+control-side stability tolerance.
