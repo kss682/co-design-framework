@@ -230,44 +230,6 @@ def accept_condition_triggered(stream):
         return packet.stream_id == stream.triggered_by
     return guard
 
-def accept_nn_condition(stream_ids):
-    frozen = frozenset(stream_ids)
-    def guard(mode, packet):
-        return packet.stream_id in frozen
-    return guard
-
-def compute_stream_nn_links(streams, nodes, links):
-    """BFS: for each NN link (src_id, dst_id), find which stream IDs traverse it."""
-    adj = defaultdict(list)
-    for link in links:
-        adj[link.src.node_id].append(link.dst.node_id)
-
-    stream_on_link = defaultdict(set)
-    for stream_id, stream in streams.items():
-        start, end = stream.src.node_id, stream.dst.node_id
-        if start == end:
-            continue
-        visited = {start}
-        queue = deque([[start]])
-        found = False
-        while queue and not found:
-            path = queue.popleft()
-            curr = path[-1]
-            for neighbor in adj[curr]:
-                if neighbor == end:
-                    full_path = path + [end]
-                    for i in range(len(full_path) - 1):
-                        u, v = full_path[i], full_path[i + 1]
-                        if nodes[u].node_type == "NN":
-                            stream_on_link[(u, v)].add(stream_id)
-                    found = True
-                    break
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    queue.append(path + [neighbor])
-    return stream_on_link
-
-
 def build_petri_net(
         network,
         nodes,
@@ -282,7 +244,6 @@ def build_petri_net(
     places = defaultdict(dict)
     generate_events = list()
     done_events = list()
-    stream_on_link = compute_stream_nn_links(streams, nodes, links)
     trigger_src_nodes = {
         st.src.node_id
         for st in streams.values()
@@ -410,7 +371,6 @@ def build_petri_net(
         
         if src.node_type == "NN":
             event_name = "t_NN_" + str(src.node_id) + "_" + str(dest.node_id)
-            allowed = stream_on_link.get((src.node_id, dest.node_id), set())
             network.add_event(
                 inflow=[
                     places[NETWORK_PLACE][src.node_id].mode,
