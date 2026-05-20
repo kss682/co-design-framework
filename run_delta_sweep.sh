@@ -1,12 +1,5 @@
 #!/bin/bash
 
-# =============================================================================
-# Delta Sweep Script
-# 
-# Iterates delta across the sufficient condition boundary
-# =============================================================================
-
-# Configuration — pass JSON file as argument or use default
 JSON_FILE="${1:-json/single_pendulum_cart_1/network.json}"
 SIM_TIME=20
 TRACE_FILE="simulation_results/plant1_trace.csv"

@@ -1,17 +1,4 @@
 #!/bin/bash
-
-# =============================================================================
-# Worst-Case Analysis Sweep (Section 6.4)
-#
-# Worst-case x0 directions from blackout output map M(T) = e^{AT} - Gamma(T) B K
-# at delta = 30ms (sufficient condition boundary):
-#   K1 frozen (m1->m2): [-0.0018, -0.0035, 0.9997, 0.0233]
-#
-# JSON runs mode 1 first then mode 2 -> experiments are m1->m2 (K1 frozen)
-#
-#   Switch time sweep: after 1st, 2nd, ..., 10th hit
-# =============================================================================
-
 JSON_FILE="${1:-json/single_pendulum_cart_1/network.json}"
 SIM_TIME=20
 TRACE_FILE="simulation_results/plant1_trace.csv"
