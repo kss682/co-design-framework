@@ -18,26 +18,12 @@ from switch_module.delayed_switch import DelayedSwitch
 from reporter.time_reporter import TimesReporter
 from reporter.delivery_constraints import Guarantee, PacketDeliveryConstraints
 from simpn.simulator import SimProblem, SimToken
-from simpn.visualisation import Visualisation
 
 import sys
 sys.setrecursionlimit(10000)
 
 
-# SWITCH_STRATEGY = [
-#     # SynchSwitch
-#     DelayedSwitch
-# ]
-
-
 def load_data(filename:str):
-    """
-    Docstring for load_data
-    
-    :param filename: name of file to load data
-    :return: data 
-    :rtype: dict | None
-    """
     try:
         with open(filename, 'r') as f:
             data = json.load(f)
@@ -47,21 +33,13 @@ def load_data(filename:str):
         logger.error("failed to load network model from %s due to %s", filename, e)
         return None
 
-## Modularize this function to make it testable
 def load_network(data: dict):
-    """
-    Docstring for load_network
-    
-    :param data: Description
-    :type data: dict
-    """
     nodes:dict = {}
     links:list = []
     streams:dict = {}
     modes:dict = {}
 
-    # Need to extract this out into a validation function that does strict checking on the json
-    if data.get('nodes', None) is None or data.get('links', None) is None or data.get('streams', None) is None:        
+    if data.get('nodes', None) is None or data.get('links', None) is None or data.get('streams', None) is None:
         logger.info("missing information in json, please validate")
         close_pgm()
 
@@ -115,8 +93,8 @@ def load_network(data: dict):
     pre_condition_rate = data.get("preconditions", {}).get("network_nodes")
 
     delivery_constraints = {}
-    for constranint in data.get("delivery_constraints", []):
-        delivery_constraints[(constranint.get("mode_id"), constranint.get("stream_id"))] = PacketDeliveryConstraints(**constranint)
+    for constraint in data.get("delivery_constraints", []):
+        delivery_constraints[(constraint.get("mode_id"), constraint.get("stream_id"))] = PacketDeliveryConstraints(**constraint)
 
     return (nodes,
             links,
@@ -131,19 +109,11 @@ def load_network(data: dict):
 
 
 def close_pgm():
-    """
-    Docstring for close_pgm
-    
-    :return: Description
-    :rtype: NoReturn
-    """
     logger.info("closing simulation due to error")
     exit(1)
 
 
 def generate_packet_function(mode_dict):
-    """
-    """
     def timer_function(mode, packet, stream):
 
         if mode_dict.get(mode.mode_id, None) is not None and stream.stream_id in mode_dict.get(mode.mode_id).streams:
@@ -162,9 +132,6 @@ def generate_packet_function(mode_dict):
     return timer_function
 
 def generate_packet_function_tw(stream):
-    """
-
-    """
     def timer_function(packet):
         return [
             SimToken(Packet(seq_id=packet.seq_id, stream_id=stream.stream_id, packet_time=0, mode_seq=packet.mode_seq)),
@@ -191,18 +158,6 @@ def generate_nw_function(sched, precondition_rate):
         rand = random.random()
         mode_id = str(mode.mode_id)
 
-        # expected = precondition_rate.get(str(st_id), {}).get("rate", None)
-        # if expected is None:
-        #     return [SimToken(mode), None]
-
-        # if now > expected:
-        #     return [SimToken(mode), None]
-
-        # Avoid the hard coded index usage
-        # if rand <= sched.get(mode_id)[0]["prob"]:
-        #     delay =  sched.get(mode_id)[0]["delay"]
-        # else:
-        #     delay = sched.get(mode_id)[1]["delay"]
         mode_sched = sched.get(mode_id)
         pattern = mode_sched.get("pattern")
         k = len(pattern)
@@ -466,12 +421,10 @@ def build_petri_net(
                     places[NETWORK_PLACE][dest.node_id].node
                 ],
                 behavior=nw_function,
-                # guard=accept_nn_condition(allowed),
                 name = event_name
             )
             
         else:
-            print(src, dest)
             for stream_id, stream in streams.items():
                 if stream.src.node_id == src.node_id:
                     event_name = "t_es_"+str(stream_id)
@@ -505,29 +458,19 @@ def build_petri_net(
     return places, generate_events, done_events, nw_function
 
 
-def run_simulation(nodes, 
-                   links, 
-                   streams, 
-                   modes, 
-                   mode_switch, 
-                   sched, 
-                   switch_class, 
-                   link_delays, 
+def run_simulation(nodes,
+                   links,
+                   streams,
+                   modes,
+                   mode_switch,
+                   sched,
+                   switch_class,
+                   link_delays,
                    precondition_rate,
                    delivery_constraints,
                    sim_time,
                    delta
                     ):
-    """
-    Docstring for run_simulation
-    
-    :param nodes: Description
-    :param links: Description
-    :param streams: Description
-    :param modes: Description
-    :param mode_switch: Description
-    :param sched: Description
-    """
     network = SimProblem()
     places, generate_events, done_events, nw_function = build_petri_net(
         network,
@@ -583,7 +526,6 @@ def run_simulation(nodes,
     )
     active_model = True
 
-    # Visualisation(network).show()
     while network.clock < int(sim_time) and active_model:
         bindings = network.bindings()
         if sync_switch.check_app_switch(network_clock=network.clock):
@@ -604,9 +546,6 @@ def run_simulation(nodes,
     return reporter
 
 def main():
-    """
-    Docstring for main
-    """
     logger.info("starting petri net - network simulator")
     parser = argparse.ArgumentParser(
         prog="Petri Net - Network Simulator",
@@ -720,7 +659,6 @@ def main():
                 else:
                     # Control stream (triggered by sensor)
                     plant_streams[st.plant_id]['control'].append(st_id)
-        print(plant_streams)
         if plant_streams:
             reporter.write_plant_traces(dict(plant_streams))
     else:
@@ -746,8 +684,6 @@ def main():
             )
             logger.info(f"report for {switch_class.name}")
             reporter.e2e_validate()
-            # if reporter.validate_throuput():
-            #     window_violations += 1
             if reporter.validate_consecutive_deadline_miss():
                 window_violations += 1
             

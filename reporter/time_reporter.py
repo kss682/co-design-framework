@@ -98,7 +98,6 @@ class TimesReporter(Reporter):
             *(fmt(r) for r in rows)
         ]
         table = "\n".join(table)
-        # logger.info("\n{}", table)
 
 
     def validate_throuput(self):
@@ -266,7 +265,6 @@ class TimesReporter(Reporter):
 
             with open(src_filename, mode='a', newline='') as src_file:
                 writer = csv.writer(src_file)
-                # writer.writerow(["mode", "release_time"])
 
                 # Filter end_to_end for packets belonging to this stream
                 for key, packet_info in self.end_to_end.items():
@@ -281,7 +279,6 @@ class TimesReporter(Reporter):
 
             with open(dst_filename, mode='a', newline='') as dst_file:
                 writer = csv.writer(dst_file)
-                # writer.writerow(["mode", "completion_time"])
 
                 for key, packet_info in self.end_to_end.items():
                     mode_seq, stream_id = key

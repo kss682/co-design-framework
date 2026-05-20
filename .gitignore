@@ -1,5 +1,9 @@
 __pycache__/
-simulation_results/
-.ipynb_checkpoints/
-results/
+*.pyc
 .DS_Store
+.ipynb_checkpoints/
+simulation_results/
+results/
+build/
+*.egg-info/
+.env

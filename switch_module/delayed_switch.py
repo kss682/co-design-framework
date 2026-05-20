@@ -20,13 +20,6 @@ class DelayedSwitch(Switch):
         return math.lcm(*periods)/1000
 
     def _calculate_switchingtime(self, mode_switch):
-        """
-        Docstring for _calculate_switchingtime
-        
-        :param self: Description
-        :param mode_switch: Description [(mode_id, switch_time)] 
-                            switch time represents application time at which application requests switch
-        """
         switch_time = deque()
 
         for mode_id, time in mode_switch:

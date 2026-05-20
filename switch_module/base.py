@@ -5,9 +5,6 @@ from models.stream import Packet
 from models.constants import NETWORK_PLACE, STREAM_PLACE
 
 class Switch(ABC):
-    """
-    Docstring for Base switch class
-    """
 
     def __init__(self, streams, modes, places, nodes, mode_switch, nw_function, sched, trigger_config):
         self.modes = modes
@@ -48,14 +45,6 @@ class Switch(ABC):
         if self.next_app_mode[1] > network_clock:
             return False
         
-        # current_mode_id = str(self.trigger_config["mode_id"])
-        # trigger_stream = str(self.trigger_config["stream_id"])
-        # key = (current_mode_id, trigger_stream)
-        # current_pos = self.nw_function.cyclic_counters.get(key, 0)
-        
-        # if current_pos != self.trigger_config.get("trigger_at"):
-        #     return False
-
         # Set the schedule counter for the next mode's streams to the desired start position
         next_mode_id = self.next_app_mode[0]
         next_mode = self.modes.get(next_mode_id)
@@ -80,12 +69,6 @@ class Switch(ABC):
         return True
 
     def app_switch(self, network_clock):
-        """
-        Docstring for switch
-        
-        :param self: Description
-        :param network_clock: Description
-        """
         logger.info(f"app reconfig triggered at {network_clock}")
         next_mode = self.modes.get(self.next_app_mode[0])
 

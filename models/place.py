@@ -4,18 +4,13 @@ from simpn.simulator import SimVar
 
 @dataclass
 class NetworkPlace:
-    """
-    Docstring
-    Represents network related places on the petri net
-    """
+    """Represents network related places on the Petri net."""
     node: Optional[SimVar] = None
     mode: Optional[SimVar] = None
 
 @dataclass
 class StreamPlace:
-    """
-    Docstring for StreamPlace class (used to represent stream related places on the petri net)
-    """
+    """Represents stream related places on the Petri net."""
     mode: Optional[SimVar] = None
     packet: Optional[SimVar] = None
     stream: Optional[SimVar] = None

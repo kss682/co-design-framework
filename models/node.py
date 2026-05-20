@@ -1,6 +1,3 @@
-"""
-Docstring for models.node
-"""
 from enum import Enum
 from collections import defaultdict
 class NodeTypes(Enum):
@@ -8,10 +5,7 @@ class NodeTypes(Enum):
     NN = "network_node"
 
 class Node:
-    """
-    Class Node represents nodes in the network and
-    their properties. They nodes are modelled as 
-    """
+    """Represents a node (end system or network node) in the network."""
 
     def __init__(self, node_id: int, node_type: str):
         self.node_id = node_id
